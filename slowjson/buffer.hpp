@@ -55,7 +55,7 @@ namespace slow_json {
 
         void append(const char *const dst, std::size_t length) noexcept {
             if (_capacity == 0) {
-                this->reserve(length);
+                this->reserve(this->_size + length); //提前准备扩容
             }
             if (_size + length >= _capacity) {
                 std::size_t new_capacity = _capacity;
