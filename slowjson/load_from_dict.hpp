@@ -7,6 +7,7 @@
 
 #include "load_from_dict_interface.hpp"
 #include "concetps.hpp"
+#include "polymorphic_dict.hpp"
 
 namespace slow_json {
     template<concepts::fundamental T>
@@ -86,17 +87,23 @@ namespace slow_json {
     template<concepts::serializable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            constexpr auto config = T::get_config();
-            constexpr auto size_v = config.size_v;
-            auto handle_pair = [&value, &dict](const auto &pair) {
-                auto &[field_name, field_ptr] = pair;
-                auto &field_value = value.*field_ptr;
-                using field_t = decltype(concepts::helper::match_field_type(field_ptr));
-                LoadFromDict<field_t>::load(field_value, dict[field_name.with_end().str]);
-            };
-            [&config, &handle_pair]<std::size_t...index>(std::index_sequence<index...> &&) {
-                (handle_pair(std::get<index>(config)), ...);
-            }(std::make_index_sequence<size_v>());
+            if constexpr (std::is_same_v<decltype(T::get_config()), polymorphic_dict>) {
+                polymorphic_dict config = T::get_config();
+                config.set_object(value);
+                LoadFromDict<polymorphic_dict>::load(config, dict);
+            } else {
+                constexpr auto config = T::get_config();
+                constexpr auto size_v = config.size_v;
+                auto handle_pair = [&value, &dict](const auto &pair) {
+                    auto &[field_name, field_ptr] = pair;
+                    auto &field_value = value.*field_ptr;
+                    using field_t = decltype(concepts::helper::match_field_type(field_ptr));
+                    LoadFromDict<field_t>::load(field_value, dict[field_name.with_end().str]);
+                };
+                [&config, &handle_pair]<std::size_t...index>(std::index_sequence<index...> &&) {
+                    (handle_pair(std::get<index>(config)), ...);
+                }(std::make_index_sequence<size_v>());
+            }
         }
     };
 
