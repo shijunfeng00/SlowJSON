@@ -1,11 +1,9 @@
 //#define debug_slow_json_buffer_print
 
-#include "dump.hpp"
+#include "slowjson.hpp"
 #include<iostream>
 #include<unordered_set>
 #include<unordered_map>
-#include<list>
-#include "load.hpp"
 
 using namespace slow_json::static_string_literals;
 

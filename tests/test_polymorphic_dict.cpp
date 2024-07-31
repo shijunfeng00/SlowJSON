@@ -1,6 +1,6 @@
 //#define debug_slow_json_buffer_print
 
-#include "dump.hpp"
+#include "slowjson.hpp"
 #include<iostream>
 
 using namespace slow_json::static_string_literals;

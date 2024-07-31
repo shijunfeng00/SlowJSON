@@ -1,7 +1,6 @@
 //#define debug_slow_json_buffer_print
 
-#include "dump.hpp"
-#include "indent.hpp"
+#include "slowjson.hpp"
 #include<iostream>
 #include<unordered_map>
 #include<unordered_set>
