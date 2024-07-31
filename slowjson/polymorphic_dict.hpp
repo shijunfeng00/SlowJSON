@@ -25,7 +25,7 @@ namespace slow_json {
                         class_t &object = *static_cast<class_t *>(_object);
                         auto add_object = [&object](auto &pair) {
                             auto &[name, field_pointer] = pair;
-                            return std::pair{name, object.*field_pointer};
+                            return std::pair{name, std::ref(object.*field_pointer)};
                         };
                         auto data = slow_json::static_dict{add_object(args)...};
                         slow_json::DumpToString<decltype(data)>::dump(buffer, data);
@@ -42,7 +42,8 @@ namespace slow_json {
                         if constexpr (std::is_member_object_pointer_v<field_pointer_t>) {
                             using class_t = decltype(concepts::helper::match_class_type(field_pointer_t{}));
                             class_t &object = *static_cast<class_t *>(_object);
-                            using field_t = decltype(concepts::helper::match_field_type(field_pointer_t{}));
+                            using field_t = decltype(concepts::helper::match_field_type(
+                                    std::declval<field_pointer_t>()));
                             auto &[name, field_pointer] = pair;
                             field_t &field_value = object.*field_pointer;
                             std::string_view field_name = name.with_end().str;
