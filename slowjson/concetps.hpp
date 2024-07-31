@@ -34,6 +34,9 @@ namespace slow_json::concepts {
         template<typename FieldType, typename ClassType>
         auto match_field_type(FieldType ClassType::*) -> FieldType;
 
+        template<typename FieldType, typename ClassType, std::size_t N>
+        auto match_field_type(FieldType (ClassType::*)[N]) -> FieldType(&)[N];
+
         template<typename FieldType, typename ClassType>
         auto match_class_type(FieldType ClassType::*) -> ClassType;
 
