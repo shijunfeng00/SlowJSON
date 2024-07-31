@@ -18,7 +18,8 @@ namespace slow_json {
         constexpr explicit polymorphic_dict(Args &&...args):
                 _object{nullptr},
                 _dump_fn{[this, args...](slow_json::Buffer &buffer) {
-                    using pair_t = std::tuple_element_t<0, std::tuple<Args...>>;
+                    using pair_t = std::tuple_element_t<
+                            std::tuple_size_v<std::tuple<Args...>> - 1, std::tuple<Args...>>;
                     using field_t = typename pair_t::second_type;
                     if constexpr (std::is_member_object_pointer_v<field_t>) {
                         using class_t = decltype(concepts::helper::match_class_type(field_t{}));
