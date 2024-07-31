@@ -267,9 +267,9 @@ namespace slow_json {
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             buffer.push_back('[');
-            DumpToString<decltype(value.x)>::dump(value.x);
+            DumpToString<decltype(value.x)>::dump(buffer, value.x);
             buffer.push_back(',');
-            DumpToString<decltype(value.y)>::dump(value.y);
+            DumpToString<decltype(value.y)>::dump(buffer, value.y);
             buffer.push_back(']');
         }
     };
@@ -278,9 +278,9 @@ namespace slow_json {
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             buffer.push_back('[');
-            DumpToString<decltype(value.x())>::dump(value.x());
+            DumpToString<decltype(value.x())>::dump(buffer, value.x());
             buffer.push_back(',');
-            DumpToString<decltype(value.y())>::dump(value.y());
+            DumpToString<decltype(value.y())>::dump(buffer, value.y());
             buffer.push_back(']');
         }
     };
