@@ -23,6 +23,9 @@ namespace slow_json::concepts {
         auto match_optional(std::optional<T> &) {}
 
         template<typename T>
+        auto match_reference_wrapper(const std::reference_wrapper<T> &) {}
+
+        template<typename T>
         void match_shared_ptr(const std::shared_ptr<T> &) {}
 
         template<typename T>
@@ -89,12 +92,16 @@ namespace slow_json::concepts {
     template<typename T>
     concept string=(
                            contains<std::decay_t<T>, std::string, std::string_view, char *, const char *> ||
-                           std::is_convertible_v<T, const char *>
-                   ) && !std::is_same_v<T, std::nullptr_t>;
+                           std::is_convertible_v<T, const char *>) && !std::is_same_v<T, std::nullptr_t>;
 
     template<typename T>
     concept static_string=requires(T t){
         helper::match_static_string(t);
+    };
+
+    template<typename T>
+    concept reference_wrapper=requires(T t){
+        helper::match_reference_wrapper(t);
     };
 
     template<typename T>
