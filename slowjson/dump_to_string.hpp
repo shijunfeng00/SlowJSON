@@ -38,6 +38,15 @@ namespace slow_json {
         }
     };
 
+
+    template<concepts::reference_wrapper T>
+    struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
+        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            DumpToString<typename T::type>::dump(buffer, value.get());
+        }
+    };
+
+
     /**
      * @brief 浮点数转字符串，不同类型有不同精度
      * @details 这里未来可以换成更加高效的浮点数转字符串的算法
