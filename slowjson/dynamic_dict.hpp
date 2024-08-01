@@ -170,7 +170,7 @@ namespace slow_json {
         dynamic_dict operator[](std::string_view key) const {
             assert_with_message(this->_value->IsObject(), "试图把JSON当作字典访问，但实际他并不是个字典");
             if (!this->_value->HasMember(key.data())) {
-                throw std::runtime_error(std::string{"没有找到对应的key"} + std::string{key});
+                throw std::runtime_error(std::string{"没有找到对应的key:"} + std::string{key});
             }
             return dynamic_dict(this->_value->operator[](key.data()));
         }
@@ -249,8 +249,28 @@ namespace slow_json {
             return this->_value->HasMember(key.data());
         }
 
+        /**
+         * 获得原始的rapidjson::Value指针数据
+         * @return
+         */
         const Value *value() const noexcept {
             return this->_value;
+        }
+
+        /**
+         * JSON是否可以被解析为数组
+         * @return
+         */
+        bool is_array() const noexcept {
+            return this->_value->IsArray();
+        }
+
+        /**
+         * JSON是否可以被解析为对象
+         * @return
+         */
+        bool is_object() const noexcept {
+            return this->_value->IsObject();
         }
 
     private:
