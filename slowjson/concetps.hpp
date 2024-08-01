@@ -10,14 +10,17 @@
 #include<memory>
 #include "static_dict.hpp"
 
+namespace slow_json {
+    template<typename...Args>
+    struct static_dict;
+}
 namespace slow_json::concepts {
-
     namespace helper {
         template<typename...Args>
         auto match_tuple(std::tuple<Args...> &) {}
 
         template<typename...Args>
-        auto match_static_dict(slow_json::static_dict<Args...> &) {}
+        auto match_static_dict(const static_dict<Args...> &) {}
 
         template<typename T>
         auto match_optional(std::optional<T> &) {}
