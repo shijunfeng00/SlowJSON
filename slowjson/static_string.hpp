@@ -42,6 +42,23 @@ namespace slow_json {
         constexpr static StaticString<chs..., '\0'> with_end() noexcept {
             return StaticString<chs..., '\0'>{};
         }
+
+        template<std::size_t N, char...args1, char...args2>
+        constexpr static auto times(const StaticString<args1...> &a, const StaticString<args2...> &b) {
+            if constexpr (N >= 1) {
+                return times<N - 1>(StaticString<args1..., args2...>(), b);
+            } else {
+                return StaticString<args1..., '\0'>();
+            }
+        }
+
+        template<std::size_t N>
+        constexpr static auto times() {
+            return times<N - 1>(StaticString<chs...>(), StaticString<chs...>());
+        }
+
+        template<std::size_t N>
+        static constexpr auto times_v = times<N>();
     };
     namespace static_string_literals {
         /**
