@@ -15,6 +15,17 @@ namespace slow_json {
 
     using namespace rapidjson;
 
+    static rapidjson::MemoryPoolAllocator<> *get_allocator(std::size_t size) {
+        static thread_local std::size_t max_memory_size = 4096;
+        static thread_local auto *allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
+        if (size > max_memory_size) {
+            max_memory_size = size;
+            delete allocator;
+            allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
+        }
+        return allocator;
+    }
+
     /**
      * @brief 一个可以动态访问和转换 JSON 数据的结构体
      * @details 这个结构体使用了 rapidjson 库来存储和操作 JSON 数据，提供了方便的重载运算符和类型转换方法，可以根据不同的键或索引来获取 JSON 对象或数组中的元素，并将其转换为所需的类型。
@@ -22,15 +33,16 @@ namespace slow_json {
      */
     class dynamic_dict {
     public:
-        dynamic_dict() : _value(nullptr), _is_root(false) {}
+        dynamic_dict() : _value(nullptr), _is_root(false), _allocator(nullptr) {}
 
         /**
          * @brief 从 JSON 字符串创建一个 dynamic_dict 对象
          * @param json_data 一个 std::string_view 类型的参数，表示 JSON 字符串
          */
-        explicit dynamic_dict(std::string_view json_data) : _value(new Value), _is_root(true) {
+        explicit dynamic_dict(std::string_view json_data) : _value(new Value), _is_root(true),
+                                                            _allocator(get_allocator(json_data.size() * 2)) {
             std::string json_data_str{json_data};
-            static thread_local Document document(&_allocator);
+            static thread_local Document document(_allocator);
             document.SetNull();
             document.Parse(json_data_str.c_str());
             if (json_data.empty()) {
@@ -65,19 +77,21 @@ namespace slow_json {
         dynamic_dict(dynamic_dict &&o) noexcept {
             this->_is_root = o._is_root;
             this->_value = o._value;
+            this->_allocator = o._allocator;
             o._value = nullptr;
             o._is_root = false;
+            o._allocator = nullptr;
         }
 
         /**
          * 从rapidjson::Value直接构造一个对象，但仅仅只是起到一个封装作用，不会进行任何内存上的管理
-         * @note 用这个方式生成的对象，不要尝试调用任何可能改变对象数据的接口，可能会产生UB行为
+         * @note 用这个方式生成的对象，不要尝试调用任何可能改变对象数据的接口，否则可能会当场死亡
          * @param value rapidJson对象
          * @return dynamic_dict类型的封装
          */
         static dynamic_dict wrap(const Value &value) {
             Value &v = *const_cast<Value *>(&value);
-            return dynamic_dict(v, false);
+            return dynamic_dict(v, nullptr, false);
         }
 
         dynamic_dict &operator=(dynamic_dict &&o) noexcept {
@@ -100,12 +114,12 @@ namespace slow_json {
         requires std::is_fundamental_v<T> || concepts::contains<T, std::string, std::string_view>
         dynamic_dict &operator=(const T &val) {
             if constexpr (std::is_same_v<T, std::string>) {
-                this->_value->Set(val.c_str(), _allocator);
+                this->_value->Set(val.c_str(), *_allocator);
             } else if constexpr (std::is_same_v<T, std::string_view>) {
                 std::string val2{val};
-                this->_value->Set(val2.c_str(), _allocator);
+                this->_value->Set(val2.c_str(), *_allocator);
             } else {
-                this->_value->Set(val, _allocator);
+                this->_value->Set(val, *_allocator);
             }
             return *this;
         }
@@ -115,12 +129,8 @@ namespace slow_json {
          * 注意，这里并没有考虑引用计数的问题，如果最原始的对象丢失，将会导致内存泄漏问题
          * @return
          */
-        dynamic_dict copy() {
-            return dynamic_dict(*this->_value, false);
-        }
-
         [[nodiscard]] dynamic_dict copy() const {
-            return dynamic_dict(*this->_value, false);
+            return dynamic_dict(*this->_value, _allocator, false);
         }
 
         /**
@@ -131,7 +141,7 @@ namespace slow_json {
         template<typename T>
         void set(const T &val) {
             static_assert(std::is_fundamental_v<T>, "该接口只能支持C++的基本变量，不支持更加复杂的局部JSON重构");
-            this->_value->Set(val, _allocator);
+            this->_value->Set(val, *_allocator);
         }
 
         /**
@@ -159,7 +169,7 @@ namespace slow_json {
             assert_with_message(this->_value->IsArray(), "试图把JSON当作数组访问，但实际他并不是个数组");
             const auto &array = this->_value->GetArray();
             assert_with_message(index < array.Size(), "数组访问越界");
-            return dynamic_dict(array[index]);
+            return dynamic_dict(array[index], _allocator);
         }
 
         /**
@@ -172,7 +182,7 @@ namespace slow_json {
             if (!this->_value->HasMember(key.data())) {
                 throw std::runtime_error(std::string{"没有找到对应的key:"} + std::string{key});
             }
-            return dynamic_dict(this->_value->operator[](key.data()));
+            return dynamic_dict(this->_value->operator[](key.data()), _allocator);
         }
 
         /**
@@ -253,7 +263,7 @@ namespace slow_json {
          * 获得原始的rapidjson::Value指针数据
          * @return
          */
-        const Value *value() const noexcept {
+        [[nodiscard]] const Value *value() const noexcept {
             return this->_value;
         }
 
@@ -261,7 +271,7 @@ namespace slow_json {
          * JSON是否可以被解析为数组
          * @return
          */
-        bool is_array() const noexcept {
+        [[nodiscard]] bool is_array() const noexcept {
             return this->_value->IsArray();
         }
 
@@ -269,7 +279,7 @@ namespace slow_json {
          * JSON是否可以被解析为对象
          * @return
          */
-        bool is_object() const noexcept {
+        [[nodiscard]] bool is_object() const noexcept {
             return this->_value->IsObject();
         }
 
@@ -279,20 +289,24 @@ namespace slow_json {
          * @param _value 一个 Value 类型的引用，表示已经解析好的 JSON 数据
          * @param _is_root 是否是最根本的对象，如果是的话，那么析构的时候需要将其delete，否则不需要delete
          */
-        explicit dynamic_dict(Value &_value, bool _is_root = false) : _value(&_value), _is_root(_is_root) {}
+        explicit dynamic_dict(Value &_value, MemoryPoolAllocator<> *allocator, bool _is_root = false) :
+                _value(&_value),
+                _is_root(_is_root),
+                _allocator(allocator) {}
 
         /**
          * @brief 从已有的 Value 引用创建一个 dynamic_dict 对象
          * @param _value 一个 Value 类型的指针，表示已经解析好的 JSON 数据
          * @param _is_root 是否是最根本的对象，如果是的话，那么析构的时候需要将其delete，否则不需要delete
          */
-        explicit dynamic_dict(Value *_value, bool _is_root = false) : _value(_value), _is_root(_is_root) {}
+        explicit dynamic_dict(Value *_value, MemoryPoolAllocator<> *allocator, bool _is_root = false) :
+                _value(_value),
+                _is_root(_is_root),
+                _allocator(allocator) {}
 
         Value *_value;///< 一个指向 Value 类型的指针，用来存储 JSON 数据
         bool _is_root;  ///< 一个布尔值，表示是否是根对象（Document对象），用来判断是否需要释放内存
-        static thread_local MemoryPoolAllocator<> _allocator;
+        MemoryPoolAllocator<> *_allocator; ///<内存池对象，存储解析之后的对象结果
     };
-
-    thread_local slow_json::MemoryPoolAllocator<> slow_json::dynamic_dict::_allocator(4096 * 128);
 }
 #endif //SLOWJSON_DYNAMIC_DICT_HPP
