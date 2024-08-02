@@ -144,6 +144,31 @@ int main(){
 ]
 ```
 
+## 枚举变量
+
+特殊的，`slowjson`提供了对于`enum`的支持
+
+```cpp
+#include "slowjson.hpp"
+#include <iostream>
+enum Color {
+    RED,
+    GREEN,
+    BLUE,
+    BLACK
+};
+int main(){
+    slow_json::Buffer buffer{1000};
+    slow_json::dumps(buffer,RED,4);
+    std::cout<<buffer<<std::endl;
+}
+```
+
+这段代码执行结果为
+
+```text
+RED
+```
 ## 静态JSON字典类（slow_json::static_dict）
 
 对于JSON中，多数情况下其实每一个`key`是具有不同类型的`value`，那么这个时候采用`std::map`等方法就不够用了。
@@ -382,6 +407,37 @@ int main(){
 terminate called without an active exception
 ```
 
+## 枚举变量
+
+同样的，`slowjson`也支持将字符串还原为对应的`enum`类型的变量
+
+```cpp
+#include "slowjson.hpp"
+#include<iostream>
+enum Color {
+    RED,
+    GREEN,
+    BLUE,
+    BLACK
+};
+
+int main(){
+    Color color2;
+    std::cout<<color2<<std::endl;
+    slow_json::loads(color2,"\"BLUE\"");
+    std::cout<<color2<<std::endl;
+    std::cout<<(color2==BLUE?"true":"false")<<std::endl;
+}
+
+```
+
+该代码执行得到的结果为
+
+```text
+22066
+2
+true
+```
 ## C++基本类型、STL容器和容器适配器
 
 - 对于C++的基本类型，采用`slow_json::loads`可以完成所有的解析通过
