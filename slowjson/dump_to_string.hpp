@@ -8,6 +8,7 @@
 #include "dump_to_string_interface.hpp"
 #include "concetps.hpp"
 #include "polymorphic_dict.hpp"
+#include "enum.hpp"
 
 namespace slow_json {
 
@@ -291,6 +292,13 @@ namespace slow_json {
             buffer.push_back(',');
             DumpToString<decltype(value.y())>::dump(buffer, value.y());
             buffer.push_back(']');
+        }
+    };
+
+    template<slow_json::concepts::enumerate T>
+    struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
+        static void dump_impl(Buffer &buffer, const T &value) {
+            buffer += slow_json::enum2string(value);
         }
     };
 };

@@ -60,6 +60,9 @@ namespace slow_json::concepts {
         }
     }
 
+    template<typename T>
+    concept enumerate=std::is_enum_v<T>;
+
     /**
      * 类型T是否是Args中的一个
      * @tparam T

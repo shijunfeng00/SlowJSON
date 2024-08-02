@@ -8,7 +8,7 @@
 #include "load_from_dict_interface.hpp"
 #include "concetps.hpp"
 #include "polymorphic_dict.hpp"
-
+#include "enum.hpp"
 namespace slow_json {
     template<concepts::fundamental T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
@@ -122,6 +122,14 @@ namespace slow_json {
             assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为二维点");
             LoadFromDict<decltype(value.x())>::load(value.x(), dict[0]);
             LoadFromDict<decltype(value.y())>::load(value.x(), dict[1]);
+        }
+    };
+
+    template<concepts::enumerate T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            const char *enum_str = dict.value()->GetString();
+            value = slow_json::string2enum<T>(enum_str);
         }
     };
 
