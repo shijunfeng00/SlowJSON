@@ -10,7 +10,7 @@ struct Test {
     float value = 123.456;
 
     static constexpr auto get_config() noexcept {
-        return std::tuple{
+        return slow_json::static_dict{
                 std::pair{"value"_ss, &Test::value}
         };
     }
