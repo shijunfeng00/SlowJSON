@@ -662,6 +662,59 @@ int main(){
    7,   8,   9]
 ```
 
+# 面向对象的支持
+
+这部分其实是为了兼容上一套代码（这套代码是重构之后的代码），但是确实也是一个不错的方案，具体而言就是继承`slow_json::ISerializable`
+，并实现`get_config`和`from_config`两个方法。
+通常用于序列化和反序列化并不对等的情况，例如成元属性为`std::unordered_map<int,std::string>`
+，但是又希望对应的JSON为`list[str]`，又不知道把偏特化的`DumpToString`和`LoadFromDict`写在哪里，那不如直接和类写成一起。具体用法可以参考如下的实现代码：
+
+```cpp
+#include "slowjson.hpp"
+#include <iostream>
+struct Data:public slow_json::ISerializable{
+    int x=1;
+    float y=1.2;
+    std::string z="sjf";
+    slow_json::polymorphic_dict get_config()const noexcept override{
+        return slow_json::polymorphic_dict{
+            std::pair{"x",x},
+            std::pair{"y",y},
+            std::pair{"z",z}
+        };
+    }
+    void from_config(const slow_json::dynamic_dict&data)noexcept override{
+        x=data["x"].cast<int>();
+        y=data["y"].cast<float>();
+        z=data["z"].cast<std::string>();
+    }
+};
+
+int main(){
+    Data data;
+    Data data2;
+    data.x=123;
+    data.y=345.678;
+    data.z="haha";
+    slow_json::Buffer buffer{100};
+    slow_json::dumps(buffer,data);
+    std::cout<<buffer<<std::endl;
+    slow_json::loads(data2,buffer.string());
+    std::cout<<data2.x<<std::endl;
+    std::cout<<data2.y<<std::endl;
+    std::cout<<data2.z<<std::endl;
+}
+```
+
+这段代码运行得到的结果为
+
+```text
+{"x":123,"y":345.678,"z":"haha"}
+123
+345.678
+haha
+```
+
 # 补充信息
 
 ## 多态JSON字典类型（slow_json::polymorphic_dict）
