@@ -59,11 +59,13 @@ namespace slow_json {
             }
             if (_size + length >= _capacity) {
                 std::size_t new_capacity = _capacity;
-                while (new_capacity < _size + length)new_capacity <<= 1;
+                while (new_capacity <= _size + length)new_capacity <<= 1;
                 if (new_capacity != _capacity) {
                     this->reserve(new_capacity);
+
                 }
             }
+            assert_with_message(_size + length < _capacity, "数据越界");
             memcpy(_buffer + _size, dst, length);
             _size += length;
         }
