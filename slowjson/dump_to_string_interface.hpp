@@ -19,6 +19,10 @@ namespace slow_json {
         }
     };
 
+    /**
+     * 处理匹配失败的情况，如果没有偏特化的模板类匹配成功，则最终会调用这个类的静态方法
+     * @tparam T
+     */
     template<typename T>
     struct DumpToString : public IDumpToString<DumpToString<T>> {
         static constexpr bool not_supported_flag = true; //如果某个类型匹配到了这个偏特化，则说明该类型是不被支持的

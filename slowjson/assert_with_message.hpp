@@ -1,6 +1,9 @@
-//
-// Created by hy-20 on 2024/7/12.
-//
+/**
+ * @author shijunfeng
+ * @date 2024/7/12
+ * @details 实现一个编译期断言，并在断言失败的时候输出一个失败原因和失败的位置
+ *          仅仅在DEBUG模式起效，非DEBUG模式不会开启
+ */
 
 #ifndef SLOWJSON_ASSERT_WITH_MESSAGE_HPP
 #define SLOWJSON_ASSERT_WITH_MESSAGE_HPP

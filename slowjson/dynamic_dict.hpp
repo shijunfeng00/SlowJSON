@@ -314,6 +314,9 @@ namespace slow_json {
         MemoryPoolAllocator<> *_allocator; ///<内存池对象，存储解析之后的对象结果
     };
 
+    /**
+     * 为将slow_json::dynamic_dict重新转换为JSON字符串提供支持
+     */
     template<>
     struct DumpToString<dynamic_dict> : public IDumpToString<DumpToString<dynamic_dict>> {
         static void dump_impl(Buffer &buffer, const dynamic_dict &value) {

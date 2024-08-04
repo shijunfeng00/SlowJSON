@@ -8,13 +8,13 @@
 #include <string>
 #include <stack>
 #include <stdexcept>
+#include "buffer.hpp"
 
 namespace slow_json {
     /**
       * 格式化JSON字符串，添加首航缩进
-      * @param json JSON原始数据
+      * @param json 存储JSON的缓冲区数据
       * @param indent 缩进长度
-      * @return
       */
     void indent(slow_json::Buffer &json, std::size_t indent = 4) {
         std::size_t init_size = json.size();

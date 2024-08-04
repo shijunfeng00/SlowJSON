@@ -11,11 +11,11 @@
 
 namespace slow_json {
     /**
-     * 对上述的函偏特化类做一个封装，自动去调用不同的偏特化函数
-     * @tparam T
-     * @param buffer
-     * @param value
-     * @param indent 首行缩进，如果不需要可设置为空
+     * 对DumpToString特化类做一个封装，根据不同类型去调用不同的偏特化函数
+     * @tparam T 被转换为JSON的对象类型
+     * @param buffer 存储转换之后的JSON的缓冲区对象
+     * @param value 被转化为JSON的对象
+     * @param indent 首行缩进长度，如果不需要可设置为空
      */
     template<typename T>
     static void dumps(Buffer &buffer, const T &value, std::optional<std::size_t> indent = std::nullopt) {

@@ -8,9 +8,14 @@
 #include<string_view>
 #include<array>
 #include "concetps.hpp"
-
+#include <unordered_map>
 namespace slow_json {
 
+    /**
+     * 获得枚举变量字符串名称的辅助类型
+     * @tparam value enum变量值
+     * @return enum变量对应的字符串表示
+     */
     template<auto value>
     constexpr auto enum_name() {
         std::string_view name;
@@ -32,6 +37,12 @@ namespace slow_json {
         };
     }
 
+    /**
+     * 获得枚举型变量的数量
+     * @tparam T 枚举类型
+     * @tparam N
+     * @return
+     */
     template<concepts::enumerate T, std::size_t N = 0>
     constexpr auto enum_max() {
         constexpr T value = static_cast<T>(N);
@@ -41,6 +52,11 @@ namespace slow_json {
             return N;
     }
 
+    /**
+     * 获得枚举类型的每一个变量取值对应的字符串表示
+     * @tparam T 枚举类型
+     * @return
+     */
     template<concepts::enumerate T>
     constexpr auto enum_name_list() {
         constexpr auto num = enum_max<T>();
@@ -52,12 +68,24 @@ namespace slow_json {
         return names;
     }
 
+    /**
+     * 将任意枚举类的变量转化为对应的字符串表示，为枚举型变量的序列化提供支持
+     * @tparam T
+     * @param value
+     * @return
+     */
     template<concepts::enumerate T>
     constexpr auto enum2string(T value) {
         auto names = enum_name_list<T>();
         return names[static_cast<std::size_t>(value)];
     }
 
+    /**
+     * 将字符串格式的变量重新转换为枚举型变量，为枚举型变量的反序列化提供支持
+     * @tparam T
+     * @param enum_str
+     * @return
+     */
     template<concepts::enumerate T>
     static T string2enum(const char *enum_str) {
         static std::unordered_map<std::string_view, T> mp = []() {

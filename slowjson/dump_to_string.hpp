@@ -119,6 +119,10 @@ namespace slow_json {
         }
     };
 
+    /**
+     * 对于std::tuple的处理，将其作为list得到一个列表
+     * @tparam T
+     */
     template<slow_json::concepts::tuple T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
@@ -138,6 +142,10 @@ namespace slow_json {
         }
     };
 
+    /**
+     * slow_json::static_dict的处理，将其作为object，得到一个大括号表示的字典
+     * @tparam T
+     */
     template<slow_json::concepts::slow_json_static_dict T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
@@ -224,6 +232,10 @@ namespace slow_json {
         }
     };
 
+    /**
+     * 可序列化的类的处理
+     * @tparam T
+     */
     template<slow_json::concepts::serializable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
@@ -239,6 +251,7 @@ namespace slow_json {
                         return tp;
                     }
                 };
+                // 先得到对象属性信息，包括属性名称和指针
                 auto config = get_value(T::get_config());
                 auto print = [&value, &buffer](const auto &field) {
                     const auto &[field_name, field_ptr] = field;
@@ -246,6 +259,7 @@ namespace slow_json {
                     DumpToString<std::remove_const_t<decltype(field_name.with_end())>>::dump(buffer,
                                                                                              field_name.with_end());
                     buffer.push_back(':');
+                    //根据对象和对象属性指针获得对象属性值，然后将其转换为JSON
                     DumpToString<field_type>::dump(buffer, value.*field_ptr);
                     buffer.push_back(',');
                 };
@@ -261,6 +275,7 @@ namespace slow_json {
                         buffer.push_back('}');
                     }
                 } else {
+                    //std::tuple{std::pair{'a','b'}} 会变为 std::tuple{'a','b'}，所以这里做个简单的处理
                     buffer.push_back('{');
                     print(config);
                     if (buffer.back() == ',') {

@@ -6,7 +6,9 @@
 #define SLOWJSON_POLYMORPHIC_DICT_HPP
 
 #include "dump_to_string_interface.hpp"
+#include "load_from_dict_interface.hpp"
 #include "static_dict.hpp"
+#include "dynamic_dict.hpp"
 #include <functional>
 
 namespace slow_json {

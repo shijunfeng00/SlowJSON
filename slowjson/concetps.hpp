@@ -1,6 +1,8 @@
-//
-// Created by hy-20 on 2024/7/13.
-//
+/**
+ * @author shijunfeng
+ * @date 2024/7/13
+ * @details 用来实现模板偏特化的各种概念
+ */
 
 #ifndef SLOWJSON_CONCETPS_HPP
 #define SLOWJSON_CONCETPS_HPP
@@ -16,15 +18,35 @@ namespace slow_json {
 }
 namespace slow_json::concepts {
     namespace helper {
+        /**
+         * 匹配std::tuple的辅助函数，无实际调用意义
+         * @tparam Args
+         * @return
+         */
         template<typename...Args>
         auto match_tuple(std::tuple<Args...> &) {}
 
+        /**
+         * 匹配slow_json::static_dict的辅助函数，无实际调用意义
+         * @tparam Args
+         * @return
+         */
         template<typename...Args>
         auto match_static_dict(const static_dict<Args...> &) {}
 
+        /**
+         * 匹配std::optional的辅助函数，无实际调用意义
+         * @tparam Args
+         * @return
+         */
         template<typename T>
         auto match_optional(std::optional<T> &) {}
 
+        /**
+         * 匹配std::reference_wrapper的辅助函数，无实际调用意义
+         * @tparam Args
+         * @return
+         */
         template<typename T>
         auto match_reference_wrapper(const std::reference_wrapper<T> &) {}
 
@@ -37,12 +59,24 @@ namespace slow_json::concepts {
         template<typename T>
         void match_weak_ptr(const std::weak_ptr<T> &) {}
 
+        /**
+         * 根据成员属性指针类型萃取class类型，用于类型推断，不需要具体实现
+         * @tparam FieldType 成员属性指针
+         * @tparam ClassType 成员属性所属的class的类型
+         * @return
+         */
         template<typename FieldType, typename ClassType>
         auto match_field_type(FieldType ClassType::*) -> FieldType;
 
         template<typename FieldType, typename ClassType, std::size_t N>
         auto match_field_type(FieldType (ClassType::*)[N]) -> FieldType(&)[N];
 
+        /**
+         * 根据成员属性指针类型萃取成员属性类型，用于类型推断，不需要具体实现
+         * @tparam FieldType 成员属性指针
+         * @tparam ClassType 成员属性所属的类型
+         * @return
+         */
         template<typename FieldType, typename ClassType>
         auto match_class_type(FieldType ClassType::*) -> ClassType;
 
@@ -65,12 +99,17 @@ namespace slow_json::concepts {
 
     /**
      * 类型T是否是Args中的一个
-     * @tparam T
-     * @tparam Args
+     * @tparam T 被判断的类型
+     * @tparam Args 类型列表
      */
     template<typename T, typename... Args>
     concept contains = std::disjunction_v<std::is_same<T, Args>...>;
 
+    /**
+     * 有的场景用contains会编译失败，用is_contains_v才可以，原因未知，可能是gcc版本过低（9.4），对于C++20特性支持不完善
+     * @tparam T
+     * @tparam Args
+     */
     template<typename T, typename...Args>
     constexpr bool is_contains_v = contains<T, Args...>;
 
@@ -92,9 +131,17 @@ namespace slow_json::concepts {
     template<typename T>
     concept floating_point=std::is_floating_point_v<T>;
 
+    /**
+     * C语言基本类型
+     * @tparam T
+     */
     template<typename T>
     concept fundamental=std::is_fundamental_v<T>;
 
+    /**
+     * 字符串类型，std::string,std::string_view,char*,const char*或者实现了operator const char*()的对象
+     * @tparam T
+     */
     template<typename T>
     concept string=(
                            contains<std::decay_t<T>, std::string, std::string_view, char *, const char *> ||
@@ -110,6 +157,10 @@ namespace slow_json::concepts {
         helper::match_reference_wrapper(t);
     };
 
+    /**
+     * 字典类型，例如std::unordered_map，std::map
+     * @tparam T
+     */
     template<typename T>
     concept dict=requires(T a){
         *std::begin(a);
@@ -118,6 +169,10 @@ namespace slow_json::concepts {
         typename T::mapped_type;
     };
 
+    /**
+     * 集合类型，例如std::unordered_set，std::set
+     * @tparam T
+     */
     template<typename T>
     concept set=requires(T a){
         *std::begin(a);
@@ -126,7 +181,7 @@ namespace slow_json::concepts {
     };
 
     /**
-     * 是否是可迭代的类型
+     * 是否是可迭代的类型，例如std::vector，std::list
      * @tparam T
      */
     template<typename T>
@@ -137,18 +192,29 @@ namespace slow_json::concepts {
         requires !dict<T>;
     };
 
+    /**
+     * std::tuple<Args...>类型
+     * @tparam T
+     */
     template<typename T>
     concept tuple=requires(T t){
         helper::match_tuple(t);
         std::tuple_size<T>::value;
     };
 
+    /**
+     * slow_json::static_dict<Args...>类型
+     * @tparam T
+     */
     template<typename T>
     concept slow_json_static_dict=requires(T t){
         helper::match_static_dict(t);
     };
 
-
+    /**
+     * std::pair<K,V>类型
+     * @tparam T
+     */
     template<typename T>
     concept pair=requires(T t){
         t.first;
@@ -156,27 +222,47 @@ namespace slow_json::concepts {
         std::get<0>(t);
     };
 
+    /**
+     * std::optional类型
+     * @tparam T
+     */
     template<typename T>
     concept optional=requires(T t){
         helper::match_optional(t);
     } || std::is_same_v<T, std::nullopt_t>;
 
+    /**
+     * 指针类型，包括C指针和三种C++智能指针
+     * @tparam T
+     */
     template<typename T>
     concept pointer=(std::is_pointer_v<T> ||
                      std::is_same_v<T, std::nullptr_t> || requires(T t){ helper::match_shared_ptr(t); } ||
                      requires(T t){ helper::match_unique_ptr(t); } || requires(T t){ helper::match_weak_ptr(t); }) &&
                     !string<T>;
 
+    /**
+     * 支持序列化的类型，通常为用户自定义类型，且正确实现了get_config方法
+     * @tparam T
+     */
     template<typename T>
     concept serializable=requires(T t){
         T::get_config();
     };
 
+    /**
+     * opencv的cv::Point2f,cv::Point2i等点类型
+     * @tparam T
+     */
     template<typename T>
     concept cv_point=requires(T t){ t.x;t.y; } && !serializable<T> &&
                      (std::is_same_v<decltype(T::x), decltype(T::y)>) &&
                      (sizeof(T) == sizeof(T::x) + sizeof(T::y));
 
+    /**
+     * eigen中的点类型，类似opencv的情况
+     * @tparam T
+     */
     template<typename T>
     concept eigen_point=requires(T t){
         t.x();
