@@ -112,7 +112,7 @@ namespace slow_json {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为二维点");
             LoadFromDict<decltype(value.x)>::load(value.x, dict[0]);
-            LoadFromDict<decltype(value.y)>::load(value.x, dict[1]);
+            LoadFromDict<decltype(value.y)>::load(value.y, dict[1]);
         }
     };
 
