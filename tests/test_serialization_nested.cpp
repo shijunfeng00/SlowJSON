@@ -33,11 +33,14 @@ struct NodeList {
 int main() {
     slow_json::Buffer buffer(1000);
     NodeList node_list;
+    node_list.nodes[2].z = "change";
+    //序列化node_list
     slow_json::dumps(buffer, node_list);
+    //反序列化到node_list2上去
+    NodeList node_list2;
+    slow_json::loads(node_list2, buffer.string());
+    buffer.clear();
+    //然后再次序列化node_list2，查看结果是否正确
+    slow_json::dumps(buffer, node_list2);
     std::cout << buffer << std::endl;
-
-//    Node node;
-//    slow_json::Buffer buffer(1000);
-//    slow_json::dumps(buffer,node);
-//    std::cout<<buffer<<std::endl;
 }
