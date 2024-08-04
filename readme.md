@@ -231,7 +231,7 @@ int main(){
 
 该代码的输出为
 
-```cpp
+```text
 ABC wawa
 ```
 
