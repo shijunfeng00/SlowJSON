@@ -173,10 +173,9 @@ namespace slow_json::concepts {
     };
 
     template<typename T>
-    concept cv_point=requires(T t){
-        t.x;
-        t.y;
-    } && !serializable<T>;
+    concept cv_point=requires(T t){ t.x;t.y; } && !serializable<T> &&
+                     (std::is_same_v<decltype(T::x), decltype(T::y)>) &&
+                     (sizeof(T) == sizeof(T::x) + sizeof(T::y));
 
     template<typename T>
     concept eigen_point=requires(T t){
