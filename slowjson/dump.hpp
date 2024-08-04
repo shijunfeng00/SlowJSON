@@ -18,7 +18,7 @@ namespace slow_json {
      * @param indent 首行缩进，如果不需要可设置为空
      */
     template<typename T>
-    void dumps(Buffer &buffer, const T &value, std::optional<std::size_t> indent = std::nullopt) {
+    static void dumps(Buffer &buffer, const T &value, std::optional<std::size_t> indent = std::nullopt) {
         DumpToString<T>::dump(buffer, value);
         if (indent) {
             slow_json::indent(buffer, indent.value());

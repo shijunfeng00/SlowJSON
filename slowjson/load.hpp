@@ -10,7 +10,7 @@
 
 namespace slow_json {
     template<typename T>
-    void loads(T &value, const std::string &json) {
+    static void loads(T &value, const std::string &json) {
         slow_json::dynamic_dict dict(json);
         LoadFromDict<T>::load(value, dict);
     }

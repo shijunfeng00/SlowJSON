@@ -59,7 +59,7 @@ namespace slow_json {
     }
 
     template<concepts::enumerate T>
-    T string2enum(const char *enum_str) {
+    static T string2enum(const char *enum_str) {
         static std::unordered_map<std::string_view, T> mp = []() {
             std::unordered_map<std::string_view, T> mp;
             constexpr auto enum_list = slow_json::enum_name_list<T>();
