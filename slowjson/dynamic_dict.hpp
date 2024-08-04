@@ -6,23 +6,28 @@
 #define SLOWJSON_DYNAMIC_DICT_HPP
 
 #include <rapidjson/document.h>
+#include <rapidjson/writer.h>
 #include "concetps.hpp"
+#include "dump_to_string_interface.hpp"
 
 namespace slow_json {
 
     template<typename T>
     struct LoadFromDict;
 
+    template<typename T>
+    struct ILoadFromDict;
+
     using namespace rapidjson;
 
-    static rapidjson::MemoryPoolAllocator<> *get_allocator(std::size_t size) {
-        static thread_local std::size_t max_memory_size = 4096;
-        static thread_local auto *allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
-        if (size > max_memory_size) {
-            max_memory_size = size;
-            delete allocator;
-            allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
-        }
+    static rapidjson::MemoryPoolAllocator<> *get_allocator() {
+//        static thread_local std::size_t max_memory_size = 4096*64;
+        static thread_local auto *allocator = new rapidjson::MemoryPoolAllocator(1024 * 64);
+//        if (size > max_memory_size) {
+//            max_memory_size = size;
+//            delete allocator;
+//            allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
+//        }
         return allocator;
     }
 
@@ -40,7 +45,7 @@ namespace slow_json {
          * @param json_data 一个 std::string_view 类型的参数，表示 JSON 字符串
          */
         explicit dynamic_dict(std::string_view json_data) : _value(new Value), _is_root(true),
-                                                            _allocator(get_allocator(json_data.size() * 2)) {
+                                                            _allocator(get_allocator()) {
             std::string json_data_str{json_data};
             static thread_local Document document(_allocator);
             document.SetNull();
@@ -91,7 +96,7 @@ namespace slow_json {
          */
         static dynamic_dict wrap(const Value &value) {
             Value &v = *const_cast<Value *>(&value);
-            return dynamic_dict(v, nullptr, false);
+            return dynamic_dict(v, get_allocator(), false);
         }
 
         dynamic_dict &operator=(dynamic_dict &&o) noexcept {
@@ -308,5 +313,18 @@ namespace slow_json {
         bool _is_root;  ///< 一个布尔值，表示是否是根对象（Document对象），用来判断是否需要释放内存
         MemoryPoolAllocator<> *_allocator; ///<内存池对象，存储解析之后的对象结果
     };
+
+    template<>
+    struct DumpToString<dynamic_dict> : public IDumpToString<DumpToString<dynamic_dict>> {
+        static void dump_impl(Buffer &buffer, const dynamic_dict &value) {
+            rapidjson::StringBuffer rapid_buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(rapid_buffer);
+            value.value()->Accept(writer);
+            buffer += rapid_buffer.GetString();
+        }
+    };
+
+
+
 }
 #endif //SLOWJSON_DYNAMIC_DICT_HPP
