@@ -21,7 +21,8 @@ namespace slow_json {
         std::stack<char> brackets; // 存储左括号
         bool in_string = false; // 记录是否在字符串中
         char match; // 存储匹配的右括号
-        for (char c: json) { // 遍历JSON字符串中的每个字符
+        for (int idx = 0; idx < init_size; idx++) { // 遍历JSON字符串中的每个字符
+            char &c = json[idx];
             if (c == '{' || c == '[') { // 如果是左括号
                 brackets.push(c); // 入栈
                 json += c; // 原样输出
