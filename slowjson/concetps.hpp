@@ -10,11 +10,17 @@
 #include<type_traits>
 #include<optional>
 #include<memory>
-#include "static_dict.hpp"
+#include "static_string.hpp"
 
 namespace slow_json {
     template<typename...Args>
     struct static_dict;
+
+    struct dynamic_dict;
+
+    struct polymorphic_dict;
+
+    struct ISerializable;
 }
 namespace slow_json::concepts {
     namespace helper {
@@ -249,6 +255,9 @@ namespace slow_json::concepts {
     concept serializable=requires(T t){
         T::get_config();
     };
+
+    template<typename T>
+    concept serializable_oop=std::is_base_of_v<ISerializable, T>;
 
     /**
      * opencv的cv::Point2f,cv::Point2i等点类型

@@ -9,6 +9,7 @@
 #include "concetps.hpp"
 #include "polymorphic_dict.hpp"
 #include "enum.hpp"
+#include "serializable.hpp"
 namespace slow_json {
     template<concepts::fundamental T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
@@ -130,6 +131,17 @@ namespace slow_json {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             const char *enum_str = dict.value()->GetString();
             value = slow_json::string2enum<T>(enum_str);
+        }
+    };
+
+    /**
+     * 用户有自己的想法，根据get_config传入一个slow_json::dynamic_dict对象，用户自己来完成解析
+     * @tparam T
+     */
+    template<concepts::serializable_oop T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) noexcept {
+            value.from_config(dict);
         }
     };
 

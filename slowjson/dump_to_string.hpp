@@ -9,6 +9,7 @@
 #include "concetps.hpp"
 #include "polymorphic_dict.hpp"
 #include "enum.hpp"
+#include "serializable.hpp"
 
 namespace slow_json {
 
@@ -316,6 +317,18 @@ namespace slow_json {
             buffer += slow_json::enum2string(value);
         }
     };
+
+    /**
+     * 用户有自己的想法，根据from_config返回一个可以直接转换为JSON的slow_json::polymorphic_dict对象
+     * @tparam T
+     */
+    template<concepts::serializable_oop T>
+    struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
+        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            DumpToString<decltype(value.get_config())>::dump(buffer, value.get_config());
+        }
+    };
+
 };
 
 #endif //SLOWJSON_DUMP_TO_STRING_HPP
