@@ -4,6 +4,19 @@
 
 该项目大量采用模板元编程和模板特化技巧优化性能并使得框架更加通用，使用者可以像写`Python`一样非常方便的去构造和解析JSON数据
 
+# 使用说明
+
+该库采用header only的设计，因此只需要在`CMakeLists.txt`中导入头文件即可
+
+该库在`Linux/gcc9.4`下完成编写，没有对非`gcc`环境做适配，后面有时间再说
+
+```cmake
+include_directories(
+        "slowjson"
+        "3rd_party/rapidjson"
+)
+```
+
 # 类型支持
 
 该库支持的数据类型十分丰富，基本涵盖大部分C++常用类型，主要可以描述为下面的类型：
