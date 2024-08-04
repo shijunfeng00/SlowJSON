@@ -1,10 +1,10 @@
-# SlowJson：一个非常简单好用但性能不高的C++JSON处理库
+# SlowJson：一个简单通用的C++JSON处理库
 
 本框架的目的是提供一套非常简单的的JSON处理库（当然主要是用于对象的序列化和反序列化，对于JSON数据的修改支持很弱，目前只有一些非常有限的接口）
 
 该项目大量采用模板元编程和模板特化技巧优化性能并使得框架更加通用，使用者可以像写`Python`一样非常方便的去构造和解析JSON数据
 
-# 类性支持
+# 类型支持
 
 该库支持的数据类型十分丰富，基本涵盖大部分C++常用类型，主要可以描述为下面的类型：
 
@@ -14,23 +14,26 @@
 
 - `T*`,`std::shared_ptr<T>`,`std::optional<T>`，并支持处理`nullptr`和`std::nullopt`
 
-- C++风格的`std::array<T,N>`数组和C语言风格的`int[N]`数组
+- `C++`风格的`std::array<T,N>`数组和`C`语言风格的`int[N]`数组
 
 - `std::tuple`,`std::pair`,`slow_json::static_dict`
 
-- 实现特定接口的用户自定义类型（侵入式或非侵入式）。
+- 实现特定接口的用户自定义类型（侵入式或非侵入式）
+
+- 上述类型的任意组合出来的复杂类型
 
 # 将C++对象序列化为JSON字符串
 
 ## 处理不支持的类型
 
-开篇先说说本框架如果遇到不支持的类型会怎么样，幸运的是，本框架（通常）不会像大多数模板库一样得到又臭有长的错误，通常来说会触发一个
+开篇先说说本框架如果遇到不支持的类型会怎么样，幸运的是，本框架（通常）不会像大多数模板库一样得到又臭有长的编译期错误，如果某个类型不能被序列化，则会得到一个简单的断言失败，并输出一些错误信息。
 
 ```cpp
 int main(){
     slow_json::Buffer buffer(1000);
     cv::Mat mat = (cv::Mat_<int>(3, 3) << 1, 2, 3, 4, 5, 6, 7, 8, 9);
-    slow_json::dumps(buffer,mat); //显然框架肯定不能直接支持cv::Mat这种无法预料的第三方库
+    std::vector<cv::Mat>data{mat};
+    slow_json::dumps(buffer,data); //显然框架肯定不能直接支持cv::Mat这种无法预料的第三方库
 }
 ```
 
@@ -46,7 +49,8 @@ int main(){
 terminate called without an active exception
 ```
 
-我们将在稍后的章节介绍如何使得`slow_json`支持`cv::Mat`。
+从这段错误信息中可以很容易知道具体是什么类型不被支持(`cv::Mat`)
+，从而帮助用户去查找原因，或编写对应的类型支持代码。我们将在稍后的章节介绍如何编写代码使得`slow_json`可以支持`cv::Mat`。
 
 ## C++基本类型、STL容器和容器适配器
 
@@ -575,22 +579,27 @@ zhihu
 ```cpp
 
 struct Node{
-    int x;
-    float y;
-    std::string z;
-    static constexpr auto get_config()noexcept{
-        return slow_json::static_dict{
-                std::pair{"x"_ss,&Node::x},
-                std::pair{"y"_ss,&Node::y},
-                std::pair{"z"_ss,&Node::z}
-        };
-    }
+int x;
+float y;
+std::string z;
+static constexpr auto get_config()noexcept{
+return slow_json::static_dict{
+std::pair{
+"x"_ss, &Node::x
+},
+std::pair{
+"y"_ss, &Node::y
+},
+std::pair{
+"z"_ss, &Node::z}
+};
+}
 };
 
 int main(){
-    
-    std::vector<Node> p;
-    std::string json_str=R"([{
+
+std::vector<Node> p;
+std::string json_str=R"([{
         "x":4,
         "y":1.2,
         "z":"strings"
@@ -599,9 +608,9 @@ int main(){
         "y":12.23,
         "z":"STR"
     }])";
-    slow_json::loads(p,json_str);
-    std::cout<<p.front().x<<" "<<p.front().y<<" "<<p.front().z<<std::endl;
-    std::cout<<p.back().x<<" "<<p.back().y<<" "<<p.back().z<<std::endl;
+slow_json::loads(p, json_str);
+std::cout<<p.front().x<<" "<<p.front().y<<" "<<p.front().z<<std::endl;
+std::cout<<p.back().x<<" "<<p.back().y<<" "<<p.back().z<<std::endl;
 }
 ```
 
@@ -694,7 +703,7 @@ int main(){
 
 ## 派生类的JSON处理
 
-采用`slowjson::inherit`可以很方便的进行处理
+采用`slowjson::inherit`可以很方便的进行处理，并同时支持派生类的序列化与反序列化
 
 ```cpp
 struct Node{
