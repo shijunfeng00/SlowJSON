@@ -26,9 +26,9 @@ namespace slow_json {
          */
         explicit Buffer(std::size_t capacity = 0) :
                 _capacity(capacity), _size(0), _offset(0),
-                _buffer(capacity ? new char[_capacity] : nullptr) {
+                _buffer(capacity ? new char[_capacity + 1] : nullptr) {
 #ifdef debug_slow_json_buffer_print
-            printf("创建缓存:%p\n", this->_buffer);
+            printf("<buffer.hpp>创建缓存:%p\n", this->_buffer);
 #endif
         }
 
@@ -60,9 +60,12 @@ namespace slow_json {
             if (_size >= _capacity) {
                 // 如果插入后的大小超过最大容量，则进行扩容，容量变为当前的2倍
 #ifdef debug_slow_json_buffer_print
-                printf("原本的容量:%zu",_capacity);
+                printf("<buffer.hpp>push_back前原本的容量:%zu\n",_capacity);
 #endif
                 this->reserve(std::max(1ul, _capacity << 1));
+#ifdef debug_slow_json_buffer_print
+                printf("<buffer.hpp>push_back后的容量:%zu\n",_capacity);
+#endif
             }
             _buffer[_size] = ch;
             _size++;
@@ -205,22 +208,29 @@ namespace slow_json {
         /**
          * @brief 尝试改变缓冲区的最大容量
          * @details 如果修改之后的缓冲区最大容量小于实际当前的最大容量，则不会起效果
-         *          也就是缓冲区最大容量只能往大了改，不能往小了改
+         *          也就是缓冲区最大容量只能往大了改，不能往小了改,并且只会2倍扩容
+         *          这样做是为了减少reserve调用次数，毕竟每次都要copy数据
          * @param target_capacity 修改之后的缓冲区最大大小
          */
         void try_reserve(std::size_t target_capacity) {
             if (target_capacity > _capacity) {
-                this->reserve(target_capacity);
+                std::size_t new_capacity = _capacity;
+                while (new_capacity <= target_capacity)new_capacity <<= 1;
+                this->reserve(new_capacity);
             }
         }
 
         /**
          * @brief 清空缓冲区
          * @details 其实只是把size变为0了，不会对缓冲区数据有任何修改
+         * 反正都清空了，正好可以把offset也归零，容量重新上升，减少reserve调用次数
          * @see Buffer::resize
          */
         void clear() noexcept {
             this->resize(0);
+            this->_buffer -= this->_offset;
+            this->_capacity += this->_offset;
+            this->_offset = 0;
         }
 
         /**
@@ -291,6 +301,9 @@ namespace slow_json {
             _size -= n_begin_pos;
             _capacity -= n_begin_pos;
             _offset += n_begin_pos;
+#ifdef debug_slow_json_buffer_print
+            printf("<buffer.hpp> erase删除前%zu个元素的数据，首地址变为%p，剩余元素数量为:%zu\n",n_begin_pos,this->_buffer,this->_size);
+#endif
         }
 
         /**
@@ -298,7 +311,7 @@ namespace slow_json {
          */
         ~Buffer() {
 #ifdef debug_slow_json_buffer_print
-            printf("销毁缓存:%p\n",this->_buffer);
+            printf("<buffer.hpp>销毁缓存:%p\n",this->_buffer);
 #endif
             delete[] (this->_buffer - this->_offset);
         }
@@ -316,12 +329,12 @@ namespace slow_json {
          * @param capacity 修改之后的缓冲区最大容量
          */
         void reserve(std::size_t capacity) {
+            assert_with_message(_capacity < capacity, "数组容量变小:%zu->%zu", _capacity, capacity);
             auto new_buffer = new char[capacity + 1]; //多一位出来是用来放结束符号'\0'的
             memcpy(new_buffer, _buffer, _capacity);
 #ifdef debug_slow_json_buffer_print
-            printf("数组扩容,%zu->%zu 删除原来的数据:%p 创建新数据:%p\n",_capacity,capacity,_buffer,new_buffer);
+            printf("<buffer.hpp>数组扩容,%zu->%zu 删除原来的数据:%p 创建新数据:%p\n",_capacity,capacity,_buffer,new_buffer);
 #endif
-            assert_with_message(_capacity < capacity, "数组容量变小:%zu->%zu", _capacity, capacity);
             delete[] (this->_buffer - _offset);
             this->_buffer = new_buffer;
             this->_capacity = capacity;
