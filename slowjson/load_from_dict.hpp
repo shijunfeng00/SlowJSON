@@ -55,12 +55,14 @@ namespace slow_json {
                     LoadFromDict<element_type>::load(value[i], dict[i]);
                 }
             } else if constexpr (slow_json::concepts::set<T>) {
+                value.clear();
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
                     value.emplace(element);
                 }
             } else {
+                value.clear();
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
@@ -73,6 +75,7 @@ namespace slow_json {
     template<concepts::dict T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            value.clear();
             for (const auto &[k, v]: dict.value()->GetObject()) {
                 using key_type = typename T::key_type;
                 using value_type = typename T::mapped_type;
