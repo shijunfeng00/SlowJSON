@@ -148,5 +148,16 @@ namespace slow_json {
         }
     };
 
+    template<concepts::optional T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) noexcept {
+            typename T::value_type object;
+            if (!dict.empty()) {
+                LoadFromDict<typename T::value_type>::load(object, dict);
+                value.emplace(std::move(object));
+            }
+        }
+    };
+
 }
 #endif //SLOWJSON_LOAD_FROM_DICT_HPP
