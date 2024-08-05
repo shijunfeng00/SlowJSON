@@ -13,6 +13,10 @@
 
 namespace slow_json {
 
+    /**
+     * @brief 基于多态(std::function)实现的多态字典，避免模板参数
+     * @details 不支持数据查寻，只能支持将其转化为JSON，或者配合get_config()将对象与JSON相互转换
+     */
     struct polymorphic_dict {
         friend struct IDumpToString<DumpToString<polymorphic_dict>>;
     public:
