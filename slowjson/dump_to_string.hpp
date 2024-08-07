@@ -314,7 +314,10 @@ namespace slow_json {
     template<slow_json::concepts::enumerate T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) {
+            // 在转化为JSON的时候，必须以带双引号的字符串来进行表示，否则会导致JSON解析错误
+            buffer.push_back('"');
             buffer += slow_json::enum2string(value);
+            buffer.push_back('"');
         }
     };
 
