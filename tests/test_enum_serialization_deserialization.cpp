@@ -4,11 +4,23 @@
 #include "slowjson.hpp"
 #include "iostream"
 
+using namespace slow_json::static_string_literals;
+
 enum Color {
     RED,
     GREEN,
     BLUE,
     BLACK
+};
+
+struct ObjectWithEnum {
+    Color color;
+
+    static constexpr auto get_config() noexcept {
+        return slow_json::static_dict{
+                std::pair{"color"_ss, &ObjectWithEnum::color}
+        };
+    }
 };
 
 int main() {
@@ -26,5 +38,15 @@ int main() {
     Color color2;
     slow_json::loads(color2, "\"BLUE\""); //注意，这里是个字符串
     std::cout << (color2 == BLUE);
+
+    std::cout << "----------------\n";
+
+    ObjectWithEnum object{.color=GREEN};
+    buffer.clear();
+    slow_json::dumps(buffer, object);
+    std::cout << buffer << std::endl;
+    ObjectWithEnum object2;
+    slow_json::loads(object2, buffer.string());
+    std::cout << (object2.color == GREEN) << std::endl;
 
 }
