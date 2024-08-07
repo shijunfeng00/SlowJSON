@@ -1,6 +1,8 @@
 //
 // Created by hy-20 on 2024/7/18.
 //
+#define debug_slow_json_buffer_print
+
 #include "buffer.hpp"
 #include <iostream>
 
@@ -16,11 +18,11 @@ int main() {
 
     std::string p = "caonina_caonima_caonima_caonima";
 
-    buf.append("shijunfeng_huruiting_huruiting_shijunfeng", 41);
+    buf.append("fuck fuck fuck", 41);
 
     buf.append(p.c_str(), p.size());
 
-    buf.resize(10);
+    buf.resize(20);
 
     std::cout << "{" << buf << "}" << std::endl;
     std::cout << buf.string() << std::endl;
