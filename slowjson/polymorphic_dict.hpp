@@ -20,7 +20,20 @@ namespace slow_json {
     struct polymorphic_dict {
         friend struct IDumpToString<DumpToString<polymorphic_dict>>;
     public:
-        template<typename...Args>
+        polymorphic_dict(const polymorphic_dict &d1, const polymorphic_dict &d2) :
+                _object(nullptr),
+                _dump_fn([d1, d2](slow_json::Buffer &buffer) {
+                    d1._dump_fn(buffer);
+                    std::size_t position = buffer.size() - 1;
+                    buffer.resize(position);
+                    d2._dump_fn(buffer);
+                    buffer[position] = ',';
+                }),
+                _load_fn([](const slow_json::dynamic_dict &) {
+                    assert_with_message(false, "没有实现该方法");
+                }) {}
+
+        template<typename...Args> requires ((concepts::pair<Args>) && ...)
         constexpr explicit polymorphic_dict(Args &&...args):
                 _object{nullptr},
                 _dump_fn{[this, args...](slow_json::Buffer &buffer) {
