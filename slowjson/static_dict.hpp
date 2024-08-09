@@ -42,8 +42,25 @@ namespace slow_json {
             }
         }
 
+        template<std::size_t index = 0, char...chs>
+        auto &at(StaticString<chs...> &&) noexcept {
+            if constexpr (std::is_same_v<decltype(std::get<index>(*this).first), StaticString<chs...>>) {
+                return std::get<index>(*this).second;
+            } else if constexpr (index + 1 < size_v) {
+                return this->at<index + 1>(slow_json::StaticString<chs...>());
+            } else {
+                static_assert(index + 1 < size_v, "找不到对应的元素");
+                return std::get<0>(*this).second;
+            }
+        }
+
         template<char...chs>
         constexpr auto &operator[](StaticString<chs...> &&) const noexcept {
+            return this->at(StaticString<chs...>());
+        }
+
+        template<char...chs>
+        auto &operator[](StaticString<chs...> &&) noexcept {
             return this->at(StaticString<chs...>());
         }
     };
