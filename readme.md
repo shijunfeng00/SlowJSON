@@ -6,9 +6,15 @@
 
 # 更新日志：
 
-- 2024/8/9
+----
 
-对`static_dict`添加对键值对`value`进行修改的支持
+## 2024/8/9
+
+* 对`static_dict`添加对键值对`value`进行修改的支持
+
+* 对`polymorphic_dict`提供`merge`的支持，允许合并两个`polymorphic_dict`对象
+
+----
 
 # 使用说明
 
@@ -277,6 +283,8 @@ RED
 ```
 ## 静态JSON字典类（slow_json::static_dict）
 
+### 基本使用接口
+
 对于JSON中，多数情况下其实每一个`key`是具有不同类型的`value`，那么这个时候采用`std::map`等方法就不够用了。
 因此本库中提供了`slow_json::static_dict`类型，借助`std::pair`，可以像`Python`的`dict`那样去快速构建一个`JSON`字符串
 
@@ -310,8 +318,7 @@ int main(){
 }
 ```
 
-对于`slow_json::static_dict`，如果`key`采用`slow_json::static_string`，则可以非常微弱的支持编译期静态访问数据(
-感觉好像用处不大)
+对于`slow_json::static_dict`，如果`key`采用`slow_json::static_string`，则可以非常微弱的支持编译期静态访问和修改数据
 
 ```cpp
 using namespace slow_json::static_string_literals; //为了支持_ss后缀，用来获取编译期静态字符串
@@ -335,6 +342,36 @@ int main(){
 
 ```text
 ABC wawa
+```
+
+### 合并JSON数据
+
+虽然这个功能不会特别常用，但是有时候我们可能还是会希望修改键值对数据，尽管`static_dict`的设计初衷没有提供这个功能
+
+`SlowJSON`中提供了`slow_json::merge`函数，可以允许合并两个`slow_json::static_dict`对象的键值对
+
+```cpp
+int main(){
+    slow_json::static_dict json{
+            std::pair{"a"_ss,5}
+    };
+    slow_json::static_dict json2{
+            std::pair{"b"_ss,7.2}
+    };
+    slow_json::static_dict json3=slow_json::merge(json,json2);
+    slow_json::Buffer buffer{1000};
+    slow_json::dumps(buffer,json3,4);
+    std::cout<<buffer<<std::endl;
+}
+```
+
+这段代码的运行结果为
+
+```text
+{
+    "a":5,
+    "b":7.2
+}
 ```
 
 ## 添加自定义类型的支持（侵入式）
@@ -645,6 +682,7 @@ x 4 1
 
 ## 动态JSON解析类（slow_json::dynamic_dict）
 
+### 基本接口
 本库提供了`slow_json::dynamic_dict`，可以用来解析动态JSON。
 相比于`slow_json::static_dict`，`slow_json::dynamic_dict`提供了更加方便的动态JSON访问能力
 
@@ -672,6 +710,36 @@ int main() {
 zhihu
 1
 5
+```
+
+### 合并JSON数据
+
+虽然这个功能不会特别常用，但是有时候我们可能还是会希望修改键值对数据，尽管`polymorphic_dict`的设计初衷没有提供这个功能
+
+`SlowJSON`中提供了`slow_json::merge`函数，可以允许合并两个`slow_json::polymorphic_dict`对象的键值对
+
+```cpp
+int main(){
+    slow_json::polymorphic_dict json{
+            std::pair{"a"_ss,5}
+    };
+    slow_json::polymorphic_dict json2{
+            std::pair{"b"_ss,7.2}
+    };
+    slow_json::polymorphic_dict json3=slow_json::merge(json,json2);
+    slow_json::Buffer buffer{1000};
+    slow_json::dumps(buffer,json3,4);
+    std::cout<<buffer<<std::endl;
+}
+```
+
+这段代码的运行结果为
+
+```text
+{
+    "a":5,
+    "b":7.2
+}
 ```
 
 ## 添加自定义类型的支持（侵入式）
