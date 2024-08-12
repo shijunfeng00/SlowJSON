@@ -16,6 +16,11 @@
 
 ----
 
+## 2024/8/12
+
+* 将浮点数转字符串的方法从`sprintf`修改为`rapidjson::internel::dtoa`，其采用`grisu2`
+  算法完成，后续会将整数转字符串也修改我为`rapidJSON`库的接口。
+
 # 使用说明
 
 该库采用header only的设计，因此只需要在`CMakeLists.txt`中导入头文件即可
