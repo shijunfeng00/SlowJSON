@@ -9,7 +9,7 @@
 using namespace slow_json::static_string_literals;
 
 struct Test {
-    float value = 123.456;
+    float value;
 
     static constexpr auto get_config() noexcept {
         return slow_json::static_dict{
@@ -19,11 +19,11 @@ struct Test {
 };
 
 struct Node {
-    int xxx = 1;
-    float yyy = 1.2345;
-    std::string zzz = "shijunfeng";
+    int xxx;
+    float yyy;
+    std::string zzz;
     Test test;
-    std::deque<std::string> dq{"a", "b", "c", "d"};
+    std::deque<std::string> dq;
 
     static constexpr auto get_config() noexcept {
         return slow_json::static_dict{
@@ -46,7 +46,9 @@ struct Node2 : public Node {
     }
 };
 
-int main() {
+void test_static_inherit_deserialization() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
+
     Node2 p;
     std::string json_str = R"(
 {
@@ -66,10 +68,10 @@ int main() {
 }
 )";
     slow_json::loads(p, json_str);
-    std::cout << p.xxx << std::endl;
-    std::cout << p.yyy << std::endl;
-    std::cout << p.zzz << std::endl;
-    std::cout << p.test.value << std::endl;
-    std::cout << p.dq.size() << std::endl;
-    std::cout << p.hahaha << std::endl;
+    assert_with_message(p.xxx == 1, "反序列化结果不正确");
+    assert_with_message(p.yyy == 1.2345f, "反序列化结果不正确");
+    assert_with_message(p.zzz == "shijunfeng", "反序列化结果不正确");
+    assert_with_message(p.test.value == 123.456f, "反序列化结果不正确");
+    assert_with_message(p.dq.size() == 4, "反序列化结果不正确");
+    assert_with_message(p.hahaha == 2333, "反序列化结果不正确");
 }

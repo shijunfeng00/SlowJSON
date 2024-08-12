@@ -6,7 +6,8 @@
 using namespace slow_json::static_string_literals;
 
 
-int main() {
+void test_static_dict_dumps() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
     slow_json::Buffer buffer(1000);
     constexpr slow_json::static_dict dict{
             std::pair{"test"_ss, 123},
@@ -25,13 +26,36 @@ int main() {
             }}
     };
     slow_json::dumps(buffer, dict, 4);
-    std::cout << buffer << std::endl;
+    assert_with_message(buffer.string() == R"({
+    "test":123,
+    "name":"shijunfeng",
+    "tuple":{
+        "haha":"wawa",
+        "single":"boy"
+    }
+})", "通过slow_json::dumps序列化结果不正确");
+
     buffer.clear();
 
     slow_json::dumps(buffer, tuple, 4);
-    std::cout << buffer << std::endl;
-
+    assert_with_message(buffer.string() == R"([
+    [
+        "test",
+        123
+    ],
+    [
+        "name",
+        "shijunfeng"
+    ],
+    [
+        "tuple",
+        {
+            "haha":"wawa",
+            "single":"boy"
+        }
+    ]
+])", "通过slow_json::dumps序列化结果不正确");
 
     constexpr auto value = dict["name"_ss];
-    std::cout << value << std::endl;
+    assert_with_message(value == "shijunfeng", "通过slow_json::dumps序列化结果不正确");
 }

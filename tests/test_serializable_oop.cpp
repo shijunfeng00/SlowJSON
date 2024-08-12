@@ -24,7 +24,8 @@ struct Data : public slow_json::ISerializable {
     }
 };
 
-int main() {
+void test_serializable_oop() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
     Data data;
     Data data2;
     data.x = 123;
@@ -32,9 +33,10 @@ int main() {
     data.z = "haha";
     slow_json::Buffer buffer{100};
     slow_json::dumps(buffer, data);
-    std::cout << buffer << std::endl;
+    assert_with_message(buffer.string() == "{\"x\":123,\"y\":345.678,\"z\":\"haha\"}",
+                        "通过slow_json::dumps序列化得到的结果不正确");
     slow_json::loads(data2, buffer.string());
-    std::cout << data2.x << std::endl;
-    std::cout << data2.y << std::endl;
-    std::cout << data2.z << std::endl;
+    assert_with_message(data2.x == 123, "通过slow_json::loads反序列化得到的结果不正确");
+    assert_with_message(data2.y == 345.678f, "通过slow_json::loads反序列化得到的结果不正确");
+    assert_with_message(data2.z == "haha", "通过slow_json::loads反序列化得到的结果不正确");
 }

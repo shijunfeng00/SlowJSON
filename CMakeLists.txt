@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.25)
 project(SlowJson)
 
 # Compiler flags
@@ -22,12 +22,22 @@ include_directories(
         #        ${OpenCV_INCLUDE_DIRS}
 )
 
+
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(SlowJson main.cpp
-)
+if (BUILD_TEST)
+    message("编译单元测试代码")
+    file(GLOB TEST_CPP "tests/*.cpp")
+
+    add_executable(SlowJson
+            ${TEST_CPP}
+
+    )
+
+else ()
+    add_executable(SlowJson main.cpp)
+endif ()
 
 target_link_libraries(
         SlowJson
-        ${OpenCV_LIBS}
 )

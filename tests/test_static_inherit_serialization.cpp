@@ -6,12 +6,12 @@
 
 using namespace slow_json::static_string_literals;
 
-struct Test {
+struct Test2024 {
     float value = 123.456;
 
     static constexpr auto get_config() noexcept {
         return slow_json::static_dict{
-                std::pair{"value"_ss, &Test::value}
+                std::pair{"value"_ss, &Test2024::value}
         };
     }
 };
@@ -20,7 +20,7 @@ struct Node {
     int xxx = 1;
     float yyy = 1.2345;
     std::string zzz = "shijunfeng";
-    Test test;
+    Test2024 test;
     std::deque<std::string> dq{"a", "b", "c", "d"};
 
     static constexpr auto get_config() noexcept {
@@ -44,12 +44,12 @@ struct Node2 : public Node {
     }
 };
 
-int main() {
+void test_static_inherit_serialization() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
     Node2 p;
     slow_json::Buffer buffer{1000};
-    slow_json::dumps(buffer, p, 4);
-    std::cout << buffer << std::endl;
-    slow_json::static_dict d1{std::pair{"a", "b"}};
-    slow_json::static_dict d2{std::pair{"c", "d"}};
-    slow_json::merge(d1, slow_json::static_dict{std::pair{"a", "b"}});
+    slow_json::dumps(buffer, p);
+    assert_with_message(
+            buffer.string() == R"({"xxx":1,"yyy":1.2345,"zzz":"","test":{"value":123.456},"dq":[],"hahaha":2333})",
+            "通过slow_json::dumps序列化得到的结果不正确");
 }

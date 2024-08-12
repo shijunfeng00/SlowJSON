@@ -1,13 +1,13 @@
 //
 // Created by hy-20 on 2024/7/18.
 //
-#define debug_slow_json_buffer_print
+// #define debug_slow_json_buffer_print
 
 #include "buffer.hpp"
 #include <iostream>
 
-int main() {
-
+void test_buffer() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
     slow_json::Buffer buf{2};
 
     for (int i = 0; i < 9; i++) {
@@ -24,6 +24,6 @@ int main() {
 
     buf.resize(20);
 
-    std::cout << "{" << buf << "}" << std::endl;
-    std::cout << buf.string() << std::endl;
+    assert_with_message("123456789fuck fuck f" == buf.string(), "最终buffer的结果不对");
 }
+
