@@ -57,27 +57,35 @@ namespace slow_json {
     template<concepts::floating_point T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
-            if constexpr (std::is_same_v<float, T>) {
-                buffer.try_reserve(buffer.size() + 8);
-                sprintf(buffer.end(), "%.7f", value);
-                char *pos = buffer.end() + 7;
-                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
-                buffer.resize(buffer.size() + pos - buffer.end() + 1);
-            } else if constexpr (std::is_same_v<double, T>) {
-                buffer.try_reserve(buffer.size() + 16);
-                sprintf(buffer.end(), "%.15f", value);
-                char *pos = buffer.end() + 15;
-                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
-                buffer.resize(buffer.size() + pos - buffer.end() + 1);
-            } else if constexpr (std::is_same_v<long double, T>) {
-                buffer.try_reserve(buffer.size() + 19);
-                sprintf(buffer.end(), "%.18f", value);
-                char *pos = buffer.end() + 18;
-                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
-                buffer.resize(buffer.size() + pos - buffer.end() + 1);
-            } else {
-                buffer += std::to_string(value);
-            }
+            buffer.try_reserve(buffer.size() + 20);
+            char *end = rapidjson::internal::dtoa(value, buffer.end());
+            if (std::is_same_v<float, T> && end - buffer.end() > 8) {
+                end = buffer.end() + 8;
+            };
+            while (--end != buffer.end() && (*end == '0' || *end == '.'));
+            buffer.resize(buffer.size() + end - buffer.end() + 1);
+
+//            if constexpr (std::is_same_v<float, T>) {
+//                buffer.try_reserve(buffer.size() + 8);
+//                sprintf(buffer.end(), "%.7f", value);
+//                char *pos = buffer.end() + 7;
+//                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
+//                buffer.resize(buffer.size() + pos - buffer.end() + 1);
+//            } else if constexpr (std::is_same_v<double, T>) {
+//                buffer.try_reserve(buffer.size() + 16);
+//                sprintf(buffer.end(), "%.15f", value);
+//                char *pos = buffer.end() + 15;
+//                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
+//                buffer.resize(buffer.size() + pos - buffer.end() + 1);
+//            } else if constexpr (std::is_same_v<long double, T>) {
+//                buffer.try_reserve(buffer.size() + 19);
+//                sprintf(buffer.end(), "%.18f", value);
+//                char *pos = buffer.end() + 18;
+//                while (--pos != buffer.end() && (*pos == '0' || *pos == '.'));
+//                buffer.resize(buffer.size() + pos - buffer.end() + 1);
+//            } else {
+//                buffer += std::to_string(value);
+//            }
         }
     };
 
