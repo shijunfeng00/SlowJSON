@@ -29,6 +29,14 @@ include_directories(
 )
 ```
 
+本库提供了一个`CMakeLists.txt`示例代码，并提供了部分测试用例，可以通过
+
+```cpp
+cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TEST=ON  ..
+```
+
+编译运行，以测试功能是否正常
+
 # 主要接口
 
 ## `slow_json::Buffer`
