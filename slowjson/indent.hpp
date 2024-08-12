@@ -16,7 +16,7 @@ namespace slow_json {
       * @param json 存储JSON的缓冲区数据
       * @param indent 缩进长度
       */
-    void indent(slow_json::Buffer &json, std::size_t indent = 4) {
+    static void indent(slow_json::Buffer &json, std::size_t indent = 4) {
         std::size_t init_size = json.size();
         std::stack<char> brackets; // 存储左括号
         bool in_string = false; // 记录是否在字符串中

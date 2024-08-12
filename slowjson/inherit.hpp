@@ -17,7 +17,7 @@ namespace slow_json {
      * @return 合并之后的static_dict对象
      */
     template<slow_json::concepts::slow_json_static_dict Ta, slow_json::concepts::slow_json_static_dict Tb>
-    constexpr auto merge(const Ta &a, const Tb &b) {
+    static constexpr auto merge(const Ta &a, const Tb &b) {
         constexpr auto size1 = std::tuple_size_v<typename Ta::super_type>;
         constexpr auto size2 = std::tuple_size_v<typename Tb::super_type>;
         return [a, b]<std::size_t...index1, std::size_t...index2>(std::index_sequence<index1...> &&,
@@ -32,7 +32,8 @@ namespace slow_json {
      * @param d2 被合并的另一个slow_json::polymorphic对象
      * @return 合并之后新的slow_json::polymorphic_dict对象
      */
-    slow_json::polymorphic_dict merge(const slow_json::polymorphic_dict &d1, const slow_json::polymorphic_dict &d2) {
+    static slow_json::polymorphic_dict
+    merge(const slow_json::polymorphic_dict &d1, const slow_json::polymorphic_dict &d2) {
         return {d1, d2};
     }
 
@@ -45,7 +46,7 @@ namespace slow_json {
      * @return 合并父类和派生类属性信息的slow_json::static_dict
      */
     template<typename SuperClass, concepts::slow_json_static_dict T>
-    constexpr auto inherit(const T &subclass_info) {
+    static constexpr auto inherit(const T &subclass_info) {
         return slow_json::merge(SuperClass::get_config(), subclass_info);
     }
 
@@ -58,7 +59,7 @@ namespace slow_json {
      */
     template<typename SuperClass, typename T>
     requires std::is_same_v<T, slow_json::polymorphic_dict>
-    constexpr auto inherit(const T &subclass_info) {
+    static constexpr auto inherit(const T &subclass_info) {
         return slow_json::merge(SuperClass::get_config(), subclass_info);
     }
 }

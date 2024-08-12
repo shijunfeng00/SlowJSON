@@ -72,6 +72,14 @@ namespace slow_json {
         }
 
         /**
+         * 删除末尾的最后一个元素
+         */
+        void pop_back() noexcept {
+            assert_with_message(_size > 0, "数组大小小于0");
+            _size--;
+        }
+
+        /**
          * 获得缓冲区最后一个字符的引用
          * @return
          */
