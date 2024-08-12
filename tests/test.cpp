@@ -22,5 +22,6 @@ int main() {
     test_serialization_nested();
     test_stl_dumps();
     test_stl_loads();
+    test_floating_point_serialization();
     printf("All done correctly\n");
 }

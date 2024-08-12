@@ -16,7 +16,7 @@ void test_stl_dumps() {
     buffer.clear();
     double y = 123.567890123456;
     slow_json::dumps(buffer, y);
-    assert_with_message(buffer.string() == "123.56789012345", "通过slow_json::dumps得到的结果不正确");
+    assert_with_message(buffer.string() == "123.567890123456", "通过slow_json::dumps得到的结果不正确");
 
     bool z = true;
     buffer.clear();
@@ -89,7 +89,7 @@ void test_stl_dumps() {
                                            "        \"ABC\"\n"
                                            "    ],\n"
                                            "    {\n"
-                                           "        \"yy\":5.44999,\n"
+                                           "        \"yy\":5.449999,\n"
                                            "        \"XX\":1.23\n"
                                            "    }\n"
                                            "]", "通过slow_json::dumps得到的结果不正确");

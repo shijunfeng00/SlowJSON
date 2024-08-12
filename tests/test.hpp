@@ -85,5 +85,9 @@ void test_stl_dumps();
  */
 void test_stl_loads();
 
+/**
+ * 测试浮点数的序列化
+ */
+void test_floating_point_serialization();
 
 #endif //SLOWJSON_RUN_TEST_HPP
