@@ -95,4 +95,10 @@ void test_floating_point_serialization();
  */
 void test_integral_serialization();
 
+/**
+ * 测试对象禁用拷贝构造函数的情况下能否正确使用
+ */
+void test_non_copy_constructible();
+
+
 #endif //SLOWJSON_RUN_TEST_HPP

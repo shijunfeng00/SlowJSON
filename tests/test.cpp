@@ -25,6 +25,7 @@ int main() {
     test_stl_loads();
     test_floating_point_serialization();
     test_integral_serialization();
+    test_non_copy_constructible();
     printf("\n--------------------\n");
     printf("All done correctly\n");
 }
