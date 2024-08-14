@@ -23,9 +23,30 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             if constexpr (std::is_same_v<T, char>) {
                 buffer += value;
-            } else {
-                buffer += std::to_string(value);
+            } else if constexpr (sizeof(T) == 4) {
+                if (value >= INT32_MAX) {
+                    //rapidjson似乎无法处理uint32_t和uint64_t，只能处理int32_t和int64_t，因此可能会出现溢出的情况，那么这个时候就转为用std::to_string来处理
+                    //虽然速度会慢很多，但是至少结果是正确的
+                    buffer += std::to_string(value);
+                } else {
+                    buffer.try_reserve(buffer.size() + 11);
+                    const char *end = rapidjson::internal::i32toa(value, buffer.end());
+                    buffer.resize(buffer.size() + end - buffer.end());
+                }
+            } else if constexpr (sizeof(T) == 8) {
+                if (value >= INT64_MAX) {
+                    buffer += std::to_string(value);
+                } else {
+                    buffer.try_reserve(buffer.size() + 21);
+                    const char *end = rapidjson::internal::i64toa(value, buffer.end());
+                    buffer.resize(buffer.size() + end - buffer.end());
+                }
             }
+//            if constexpr (std::is_same_v<T, char>) {
+//                buffer += value;
+//            } else {
+//                buffer += std::to_string(value);
+//            }
         }
     };
 
