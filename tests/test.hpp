@@ -90,4 +90,9 @@ void test_stl_loads();
  */
 void test_floating_point_serialization();
 
+/**
+ * 测试整数的序列化
+ */
+void test_integral_serialization();
+
 #endif //SLOWJSON_RUN_TEST_HPP

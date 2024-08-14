@@ -6,6 +6,7 @@
 
 int main() {
     printf("Start running test unit.\n");
+    printf("\n--------------------\n");
     test_buffer();
     test_deserialization();
     test_enum_serialization_deserialization();
@@ -23,5 +24,7 @@ int main() {
     test_stl_dumps();
     test_stl_loads();
     test_floating_point_serialization();
+    test_integral_serialization();
+    printf("\n--------------------\n");
     printf("All done correctly\n");
 }
