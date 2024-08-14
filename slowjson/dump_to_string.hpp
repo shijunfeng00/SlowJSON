@@ -10,8 +10,24 @@
 #include "polymorphic_dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
+#include <cmath>
 
 namespace slow_json {
+
+    /**
+     * 计算整数转化为字符串所需要的长度
+     * @tparam T 整数类型
+     * @param value 整数类型的变量
+     * @return 转化为字符串后的长度
+     */
+    template<concepts::integer T>
+    inline constexpr int get_itoa_length(T value) {
+        if (std::is_signed_v<T> && value < 0) {
+            // 加上'-'本身的长度
+            return (int) log10(-value) + 2;
+        }
+        return (int) log10(value) + 1;
+    }
 
     /**
      * @brief 整数类型转字符串
@@ -27,7 +43,10 @@ namespace slow_json {
                 if (value >= INT32_MAX) {
                     //rapidjson似乎无法处理uint32_t和uint64_t，只能处理int32_t和int64_t，因此可能会出现溢出的情况，那么这个时候就转为用std::to_string来处理
                     //虽然速度会慢很多，但是至少结果是正确的
-                    buffer += std::to_string(value);
+                    auto length = get_itoa_length(value);
+                    buffer.try_reserve(buffer.size() + length); //预留足够的空间
+                    sprintf(buffer.end(), "%" PRIu32, value);
+                    buffer.resize(buffer.size() + length);
                 } else {
                     buffer.try_reserve(buffer.size() + 11);
                     const char *end = rapidjson::internal::i32toa(value, buffer.end());
@@ -35,7 +54,10 @@ namespace slow_json {
                 }
             } else if constexpr (sizeof(T) == 8) {
                 if (value >= INT64_MAX) {
-                    buffer += std::to_string(value);
+                    auto length = get_itoa_length(value);
+                    buffer.try_reserve(buffer.size() + length); //预留足够的空间
+                    sprintf(buffer.end(), "%" PRIu64, value);
+                    buffer.resize(buffer.size() + length);
                 } else {
                     buffer.try_reserve(buffer.size() + 21);
                     const char *end = rapidjson::internal::i64toa(value, buffer.end());
