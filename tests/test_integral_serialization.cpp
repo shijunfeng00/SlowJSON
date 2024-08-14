@@ -7,6 +7,7 @@
 using namespace slow_json::static_string_literals;
 
 void test_integral_serialization() {
+    printf("run %s\n", __PRETTY_FUNCTION__);
     struct Integral {
         char a = 'p';
         int b = 123;
