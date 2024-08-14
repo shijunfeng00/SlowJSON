@@ -47,20 +47,21 @@ cmake -DCMAKE_BUILD_TYPE=Debug -DBUILD_TEST=ON  ..
 ## `slow_json::Buffer`
 
 ```cpp
-    /**
-     * @brief 一个用于生成JSON的字符串缓区，支持类似std::vector的动态大小变化
-     * @details 该类的实现接口模仿std::string，几本可以平替，但是存在一些细微的差异，例如在resize和reserve的时候不会尝试去清0多多余的元素
-     */
+/**
+* @brief 一个用于生成JSON的字符串缓区，支持类似std::vector的动态大小变化
+* @details 该类的实现接口命名风格模仿std::string和std::vector，但部分功能上存在一些细微的差异
+* 例如在resize和reserve的时候不会尝试去清0多多余的元素
+*/
 struct Buffer final;
 ```
 
 ## `slow_json::static_dict`
 
 ```cpp
-    /**
-     * 编译期静态字典
-     * @tparam Args 字典的简直对类型，为std::pair
-     */
+/**
+* 编译期静态字典
+* @tparam Args 字典的简直对类型，为std::pair
+*/
 template<typename ...Args>
 struct static_dict :
 public std::tuple<Args...>;
@@ -69,44 +70,44 @@ public std::tuple<Args...>;
 ## `slow_json::dynamic_dict`
 
 ```cpp
-    /**
-     * @brief 一个可以动态访问和转换 JSON 数据的结构体
-     * @details 这个结构体使用了 rapidjson 库来存储和操作 JSON 数据，提供了方便的重载运算符和类型转换方法，可以根据不同的键或索引来获取 JSON 对象或数组中的元素，并将其转换为所需的类型。
-     * @note 这个结构体不负责内存管理，如果是从 JSON 字符串创建的对象，则会在析构时释放内存，如果是从已有的 Value 引用创建的对象，则不会释放内存。
-     */
+/**
+* @brief 一个可以动态访问和转换 JSON 数据的结构体
+* @details 这个结构体使用了 rapidjson 库来存储和操作 JSON 数据，提供了方便的重载运算符和类型转换方法，可以根据不同的键或索引来获取 JSON 对象或数组中的元素，并将其转换为所需的类型。
+* @note 这个结构体不负责内存管理，如果是从 JSON 字符串创建的对象，则会在析构时释放内存，如果是从已有的 Value 引用创建的对象，则不会释放内存。
+*/
 class dynamic_dict;
 ```
 
 ## `slow_json::polymorphic_dict`
 
 ```cpp
-    /**
-     * @brief 基于多态(std::function)实现的多态字典，避免模板参数
-     * @details 不支持数据查寻，只能支持将其转化为JSON，或者配合get_config()将对象与JSON相互转换
-     */
+/**
+* @brief 基于多态(std::function)实现的多态字典，避免模板参数
+* @details 不支持数据查寻，只能支持将其转化为JSON，或者配合get_config()将对象与JSON相互转换
+*/
 struct polymorphic_dict;
 ```
 
 ## `slow_json::ISerializable`
 
 ```cpp
-    /**
-     * @brief 规定一个类型是可以与JSON相互转换的接口类
-     * @details 该接口定义了两个纯虚函数，get_config和from_config，分别用于将对象转换为JSON，和将JSON转换为对象
-     *          因此实现了这两个接口的类，都是可序列化的类
-     */
+/**
+* @brief 规定一个类型是可以与JSON相互转换的接口类
+* @details 该接口定义了两个纯虚函数，get_config和from_config，分别用于将对象转换为JSON，和将JSON转换为对象
+*          因此实现了这两个接口的类，都是可序列化的类
+*/
 struct ISerializable;
 ```
 
 ## `slow_json::loads`
 
 ```cpp
-    /**
-     * 从字符串中加载JSON，并用其来反序列化对象
-     * @tparam T 被反序列化的对象类型
-     * @param value 被反序列化的对象
-     * @param json JSON字符串
-     */
+/**
+* 从字符串中加载JSON，并用其来反序列化对象
+* @tparam T 被反序列化的对象类型
+* @param value 被反序列化的对象
+* @param json JSON字符串
+*/
 template<typename T>
 static void loads(T &value, const std::string &json);
 ```
@@ -114,13 +115,13 @@ static void loads(T &value, const std::string &json);
 ## `slow_json::dumps`
 
 ```cpp
-    /**
-     * 对DumpToString特化类做一个封装，根据不同类型去调用不同的偏特化函数
-     * @tparam T 被转换为JSON的对象类型
-     * @param buffer 存储转换之后的JSON的缓冲区对象
-     * @param value 被转化为JSON的对象
-     * @param indent 首行缩进长度，如果不需要可设置为空
-     */
+/**
+* 对DumpToString特化类做一个封装，根据不同类型去调用不同的偏特化函数
+* @tparam T 被转换为JSON的对象类型
+* @param buffer 存储转换之后的JSON的缓冲区对象
+* @param value 被转化为JSON的对象
+* @param indent 首行缩进长度，如果不需要可设置为空
+*/
 template<typename T>
 static void dumps(Buffer &buffer, const T &value, std::optional<std::size_t> indent = std::nullopt);
 ```
