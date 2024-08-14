@@ -17,12 +17,21 @@ namespace slow_json {
      */
     template<typename Object>
     constexpr auto type_name(const Object &object) {
+        // 获取当前函数的名称，包括模板参数
         constexpr std::string_view pretty_name = __PRETTY_FUNCTION__;
+
+        // 提取类型名称部分，去掉前缀
         constexpr std::string_view pretty_name2 = pretty_name.substr(pretty_name.find("with") + 14);
+
+        // 去掉末尾的字符，得到纯类型名称
         constexpr std::string_view name = pretty_name2.substr(0, pretty_name2.size() - 1);
+
+        // 将类型名称转换为StaticString对象
         constexpr auto static_name = [&]<std::size_t...index>(std::index_sequence<index...> &&) {
             return StaticString<name[index]..., '\0'>();
         }(std::make_index_sequence<name.size()>());
+
+        // 返回StaticString对象
         return static_name;
     }
 
