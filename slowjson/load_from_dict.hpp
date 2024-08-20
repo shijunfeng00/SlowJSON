@@ -46,6 +46,7 @@ namespace slow_json {
     template<concepts::iterable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            assert_with_message(dict.is_array(), "数据不能转化为list");
             using element_type = std::remove_const_t<std::remove_reference_t<decltype(*std::begin(value))>>;
             if constexpr (concepts::array<T>) {
                 auto array_size = std::size(value);
@@ -75,6 +76,7 @@ namespace slow_json {
     template<concepts::dict T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            assert_with_message(dict.is_object(), "数据不能转化为dict");
             value.clear();
             for (const auto &[k, v]: dict.value()->GetObject()) {
                 using key_type = typename T::key_type;
@@ -111,12 +113,38 @@ namespace slow_json {
         }
     };
 
+
     template<concepts::cv_point T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为二维点");
             LoadFromDict<decltype(value.x)>::load(value.x, dict[0]);
             LoadFromDict<decltype(value.y)>::load(value.y, dict[1]);
+        }
+    };
+
+    template<concepts::tuple T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            assert_with_message(dict.is_array(), "数据不能转化为list");
+            assert_with_message(dict.size() == std::tuple_size_v<T>,
+                                "list中元素数量和std::tuple<Args...>参数数量不对等");
+            auto fn = [&]<typename U>(U &value, std::size_t index) {
+                LoadFromDict<U>::load(value, dict[index]);
+            };
+            auto apply = [&]<std::size_t...index>(std::index_sequence<index...> &&) {
+                (fn(std::get<index>(value), index), ...);
+            };
+            apply(std::make_index_sequence<std::tuple_size_v<T>>{});
+        }
+    };
+
+    template<concepts::pair T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为std::pair");
+            LoadFromDict<decltype(value.first)>::load(value.first, dict[0]);
+            LoadFromDict<decltype(value.second)>::load(value.second, dict[1]);
         }
     };
 
