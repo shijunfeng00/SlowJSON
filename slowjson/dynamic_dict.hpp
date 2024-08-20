@@ -47,6 +47,9 @@ namespace slow_json {
         explicit dynamic_dict(std::string_view json_data) : _value(new Value), _is_root(true),
                                                             _allocator(get_allocator()) {
             std::string json_data_str{json_data};
+#ifndef NDEBUG
+            this->_json_str=json_data_str;
+#endif
             static thread_local Document document(_allocator);
             document.SetNull();
             document.Parse(json_data_str.c_str());
@@ -83,6 +86,9 @@ namespace slow_json {
             this->_is_root = o._is_root;
             this->_value = o._value;
             this->_allocator = o._allocator;
+#ifndef NDEBUG
+            this->_json_str=o._json_str;
+#endif
             o._value = nullptr;
             o._is_root = false;
             o._allocator = nullptr;
@@ -105,6 +111,10 @@ namespace slow_json {
             }
             this->_is_root = o._is_root;
             this->_value = o._value;
+            this->_allocator=o._allocator;
+#ifndef NDEBUG
+            this->_json_str=o._json_str;
+#endif
             o._value = nullptr;
             o._is_root = false;
             return *this;
@@ -126,6 +136,9 @@ namespace slow_json {
             } else {
                 this->_value->Set(val, *_allocator);
             }
+#ifndef NDEBUG
+            this->update_json_str();
+#endif
             return *this;
         }
 
@@ -147,6 +160,9 @@ namespace slow_json {
         void set(const T &val) {
             static_assert(std::is_fundamental_v<T>, "该接口只能支持C++的基本变量，不支持更加复杂的局部JSON重构");
             this->_value->Set(val, *_allocator);
+#ifndef NDEBUG
+            this->update_json_str();
+#endif
         }
 
         /**
@@ -287,8 +303,23 @@ namespace slow_json {
         [[nodiscard]] bool is_object() const noexcept {
             return this->_value->IsObject();
         }
-
+#ifndef NDEBUG
+        [[nodiscard]] const std::string& json_str()const noexcept{
+            return this->_json_str;
+        }
+#endif
     private:
+#ifndef NDEBUG
+        /**
+         * 获得局部JSON的字符串，方便DEBUG的时候用
+         */
+        void update_json_str()noexcept{
+            rapidjson::StringBuffer rapid_buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(rapid_buffer);
+            _value->Accept(writer);
+            this->_json_str = rapid_buffer.GetString();
+        }
+#endif
         /**
          * @brief 从已有的 Value 引用创建一个 dynamic_dict 对象
          * @param _value 一个 Value 类型的引用，表示已经解析好的 JSON 数据
@@ -297,7 +328,11 @@ namespace slow_json {
         explicit dynamic_dict(Value &_value, MemoryPoolAllocator<> *allocator, bool _is_root = false) :
                 _value(&_value),
                 _is_root(_is_root),
-                _allocator(allocator) {}
+                _allocator(allocator) {
+#ifndef NDEBUG
+            this->update_json_str();
+#endif
+        }
 
         /**
          * @brief 从已有的 Value 引用创建一个 dynamic_dict 对象
@@ -307,11 +342,18 @@ namespace slow_json {
         explicit dynamic_dict(Value *_value, MemoryPoolAllocator<> *allocator, bool _is_root = false) :
                 _value(_value),
                 _is_root(_is_root),
-                _allocator(allocator) {}
+                _allocator(allocator) {
+#ifndef NDEBUG
+            this->update_json_str();
+#endif
+        }
 
         Value *_value;///< 一个指向 Value 类型的指针，用来存储 JSON 数据
         bool _is_root;  ///< 一个布尔值，表示是否是根对象（Document对象），用来判断是否需要释放内存
         MemoryPoolAllocator<> *_allocator; ///<内存池对象，存储解析之后的对象结果
+#ifndef NDEBUG
+        std::string _json_str; ///<获得局部JSON的字符串，方便DEBUG的时候用（在JSON解析失败的时候，可以配合gdb查看具体的JSON字符串内容，方便知道为什么错误）
+#endif
     };
 
     /**
