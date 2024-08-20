@@ -16,7 +16,7 @@ namespace slow_json {
     template<typename...Args>
     struct static_dict;
 
-    struct dynamic_dict;
+    class dynamic_dict;
 
     struct polymorphic_dict;
 
