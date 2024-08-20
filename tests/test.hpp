@@ -100,5 +100,9 @@ void test_integral_serialization();
  */
 void test_non_copy_constructible();
 
+/**
+ * 测试std::tuple和std::pair的序列化和反序列化在正确性
+ */
+void test_pair_tuple_deserialization();
 
 #endif //SLOWJSON_RUN_TEST_HPP
