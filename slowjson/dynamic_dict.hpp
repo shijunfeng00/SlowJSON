@@ -20,17 +20,6 @@ namespace slow_json {
 
     using namespace rapidjson;
 
-    static rapidjson::MemoryPoolAllocator<> *get_allocator() {
-//        static thread_local std::size_t max_memory_size = 4096*64;
-        static thread_local auto *allocator = new rapidjson::MemoryPoolAllocator(1024 * 64);
-//        if (size > max_memory_size) {
-//            max_memory_size = size;
-//            delete allocator;
-//            allocator = new rapidjson::MemoryPoolAllocator(max_memory_size);
-//        }
-        return allocator;
-    }
-
     /**
      * @brief 一个可以动态访问和转换 JSON 数据的结构体
      * @details 这个结构体使用了 rapidjson 库来存储和操作 JSON 数据，提供了方便的重载运算符和类型转换方法，可以根据不同的键或索引来获取 JSON 对象或数组中的元素，并将其转换为所需的类型。
@@ -45,12 +34,12 @@ namespace slow_json {
          * @param json_data 一个 std::string_view 类型的参数，表示 JSON 字符串
          */
         explicit dynamic_dict(std::string_view json_data) : _value(new Value), _is_root(true),
-                                                            _allocator(get_allocator()) {
+                                                            _allocator(new rapidjson::MemoryPoolAllocator(1024 * 64)) {
             std::string json_data_str{json_data};
 #ifndef NDEBUG
-            this->_json_str=json_data_str;
+            this->_json_str = json_data_str;
 #endif
-            static thread_local Document document(_allocator);
+            Document document(_allocator);
             document.SetNull();
             document.Parse(json_data_str.c_str());
             if (json_data.empty()) {
@@ -70,6 +59,7 @@ namespace slow_json {
         ~dynamic_dict() {
             if (_is_root) {
                 delete _value;
+                delete _allocator;
             }
         }
 
@@ -87,7 +77,7 @@ namespace slow_json {
             this->_value = o._value;
             this->_allocator = o._allocator;
 #ifndef NDEBUG
-            this->_json_str=o._json_str;
+            this->_json_str = o._json_str;
 #endif
             o._value = nullptr;
             o._is_root = false;
@@ -102,7 +92,7 @@ namespace slow_json {
          */
         static dynamic_dict wrap(const Value &value) {
             Value &v = *const_cast<Value *>(&value);
-            return dynamic_dict(v, get_allocator(), false);
+            return dynamic_dict(v, new rapidjson::MemoryPoolAllocator(1024 * 64), false);
         }
 
         dynamic_dict &operator=(dynamic_dict &&o) noexcept {
@@ -111,9 +101,9 @@ namespace slow_json {
             }
             this->_is_root = o._is_root;
             this->_value = o._value;
-            this->_allocator=o._allocator;
+            this->_allocator = o._allocator;
 #ifndef NDEBUG
-            this->_json_str=o._json_str;
+            this->_json_str = o._json_str;
 #endif
             o._value = nullptr;
             o._is_root = false;
@@ -303,22 +293,27 @@ namespace slow_json {
         [[nodiscard]] bool is_object() const noexcept {
             return this->_value->IsObject();
         }
+
 #ifndef NDEBUG
-        [[nodiscard]] const std::string& json_str()const noexcept{
+
+        [[nodiscard]] const std::string &json_str() const noexcept {
             return this->_json_str;
         }
+
 #endif
     private:
 #ifndef NDEBUG
+
         /**
          * 获得局部JSON的字符串，方便DEBUG的时候用
          */
-        void update_json_str()noexcept{
+        void update_json_str() noexcept {
             rapidjson::StringBuffer rapid_buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(rapid_buffer);
             _value->Accept(writer);
             this->_json_str = rapid_buffer.GetString();
         }
+
 #endif
         /**
          * @brief 从已有的 Value 引用创建一个 dynamic_dict 对象
@@ -368,7 +363,6 @@ namespace slow_json {
             buffer += rapid_buffer.GetString();
         }
     };
-
 
 
 }
