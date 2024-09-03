@@ -9,7 +9,6 @@
 #include <rapidjson/writer.h>
 #include "concetps.hpp"
 #include "dump_to_string_interface.hpp"
-
 namespace slow_json {
 
     template<typename T>
@@ -107,6 +106,7 @@ namespace slow_json {
 #endif
             o._value = nullptr;
             o._is_root = false;
+            o._allocator = nullptr;
             return *this;
         }
 
