@@ -19,7 +19,16 @@
 ## 2024/8/12
 
 * 将浮点数转字符串的方法从`sprintf`修改为`rapidjson::internel::dtoa`，其采用`grisu2`
-  算法完成，后续会将整数转字符串也修改我为`rapidJSON`库的接口。
+  算法完成，比`sprintf`速度更快，后续会将整数转字符串也修改我为`rapidJSON`库的接口。
+
+## 2024/8/14
+
+* 将整数转字符串从`sprintf`修改为`rapidjson::internel::itoa`，相比于`sprintf`提供更快的速度
+
+## 2024/9/6
+
+* 修复了一些内存泄漏和内存异常访问的的BUG
+* 添加对于std::pair，std::tuple的反序列化的支持
 
 # 使用说明
 
