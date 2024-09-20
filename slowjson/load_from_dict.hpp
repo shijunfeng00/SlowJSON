@@ -31,6 +31,7 @@ namespace slow_json {
     template<concepts::string T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            assert_with_message(!dict.value()->IsNull(), "试图将空对象解析为%s", type_name_v<T>.str);
             if constexpr (std::is_same_v<T, const char *>) {
                 const char *data = dict.value()->GetString();
                 std::size_t size = strlen(data);
