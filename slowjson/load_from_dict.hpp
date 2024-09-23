@@ -118,7 +118,8 @@ namespace slow_json {
     template<concepts::cv_point T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为二维点");
+            assert_with_message(dict.is_array(), "数据不能转化为二维点，数据非列表类型");
+            assert_with_message(dict.size() == 2, "数据不能转化为二维点，数据长度不为2（长度为%d）", dict.size());
             LoadFromDict<decltype(value.x)>::load(value.x, dict[0]);
             LoadFromDict<decltype(value.y)>::load(value.y, dict[1]);
         }
