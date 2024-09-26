@@ -28,5 +28,5 @@ int main() {
     test_non_copy_constructible();
     test_pair_tuple_deserialization();
     printf("\n--------------------\n");
-    printf("All done correctly\n");
+    printf("All done correctly!\n");
 }

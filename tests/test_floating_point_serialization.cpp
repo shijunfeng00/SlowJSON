@@ -44,12 +44,13 @@ void test_floating_point_serialization() {
     assert_with_message(buffer.string() == "12345678901234568", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
-    y = 0.0;
-    slow_json::dumps(buffer, y);
+    x = 0.0;
     slow_json::dumps(buffer, x);
-    slow_json::dumps(buffer, y);
-    slow_json::dumps(buffer, y);
-    assert_with_message(buffer.string() == "00.1234500", "通过slow_json::dumps序列化浮点数结果错误");
+    assert_with_message(buffer.string() == "0", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
+    x = -0.0;
+    slow_json::dumps(buffer, x);
+    assert_with_message(buffer.string() == "-0", "通过slow_json::dumps序列化浮点数结果错误");
+    buffer.clear();
 }

@@ -100,12 +100,14 @@ namespace slow_json {
     template<concepts::floating_point T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            assert_with_message(value != INFINITY, "slowjson暂不支持处理浮点数的inf");
             buffer.try_reserve(buffer.size() + 20);
             char *end = rapidjson::internal::dtoa(value, buffer.end());
             if (std::is_same_v<float, T> && end - buffer.end() > 8) {
                 end = buffer.end() + 8;
             };
-            while (--end != buffer.end() && (*end == '0' || *end == '.'));
+            char *begin = *buffer.end() == '-' ? buffer.end() + 1 : buffer.end();
+            while (--end != begin && (*end == '0' || *end == '.'));
             buffer.resize(buffer.size() + end - buffer.end() + 1);
 
 //            if constexpr (std::is_same_v<float, T>) {
