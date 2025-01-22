@@ -177,7 +177,7 @@ namespace slow_json {
          * @return 一个 dynamic_dict 类型的对象，表示 JSON 数组中对应索引的值
          */
         dynamic_dict operator[](std::size_t index) const {
-            assert_with_message(this->_value->IsArray(), "试图把JSON当作数组访问，但实际他并不是个数组");
+            assert_with_message(this->_value->IsArray(), "试图把JSON当作数组访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",this->_json_str.c_str());
             const auto &array = this->_value->GetArray();
             assert_with_message(index < array.Size(), "数组访问越界");
             return dynamic_dict(array[index], _allocator);
@@ -189,7 +189,7 @@ namespace slow_json {
          * @return 一个 dynamic_dict 类型的对象，表示 JSON 对象中对应键的值
          */
         dynamic_dict operator[](std::string_view key) const {
-            assert_with_message(this->_value->IsObject(), "试图把JSON当作字典访问，但实际他并不是个字典");
+            assert_with_message(this->_value->IsObject(), "试图把JSON当作字典访问，但实际他并不是个字典，发生错误的JSON字符串为:%s",this->_json_str.c_str());
             if (!this->_value->HasMember(key.data())) {
                 throw std::runtime_error(std::string{"没有找到对应的key:"} + std::string{key});
             }
@@ -205,7 +205,7 @@ namespace slow_json {
         template<typename T>
         explicit operator T() const {
             if constexpr (!concepts::optional<T>) {
-                assert_with_message(!this->_value->IsNull(), "尝试解析null空对象为非空对象");
+                assert_with_message(!this->_value->IsNull(), "尝试解析null空对象为非空对象，对象类型必须为std::optional<T>，发生错误的JSON字符串为:%s",this->_json_str.c_str());
                 T object;
                 LoadFromDict<T>::load(object, *this);
                 return object;
@@ -239,7 +239,7 @@ namespace slow_json {
         template<typename T>
         void fit(T &value) const {
             if constexpr (!concepts::optional<T>) {
-                assert_with_message(!this->_value->IsNull(), "尝试解析null空对象为非空对象");
+                assert_with_message(!this->_value->IsNull(), "尝试解析null空对象为非空对象，value类型必须为std::optional<T>，发生错误的JSON字符串为:%s",this->_json_str.c_str());
                 LoadFromDict<T>::load(value, *this);
             } else {
                 if (this->_value->IsNull()) {
@@ -255,7 +255,7 @@ namespace slow_json {
          * @return 一个 size_t 类型的值，表示 JSON 数组的元素个数
          */
         [[nodiscard]] std::size_t size() const {
-            assert_with_message(this->_value->IsArray(), "试图把JSON当作数组访问，但实际他并不是个数组");
+            assert_with_message(this->_value->IsArray(), "试图把JSON当作数组访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",this->_json_str.c_str());
             const auto &array = this->_value->GetArray();
             return array.Size();
         }
@@ -266,7 +266,7 @@ namespace slow_json {
          * @return 是否包含这个键值对
          */
         [[nodiscard]] bool contains(std::string_view key) const noexcept {
-            assert_with_message(this->_value->IsObject(), "试图把JSON当作字典访问，但实际他并不是个数组");
+            assert_with_message(this->_value->IsObject(), "试图把JSON当作字典访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",this->_json_str.c_str());
             return this->_value->HasMember(key.data());
         }
 
