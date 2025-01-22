@@ -222,7 +222,7 @@ namespace slow_json {
          */
         void try_reserve(std::size_t target_capacity) {
             if (target_capacity > _capacity) {
-                std::size_t new_capacity = _capacity;
+                std::size_t new_capacity = std::max(1ul,_capacity);
                 while (new_capacity <= target_capacity)new_capacity <<= 1;
                 this->reserve(new_capacity);
             }

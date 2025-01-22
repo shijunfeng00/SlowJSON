@@ -47,9 +47,10 @@ struct Node2 : public Node {
 void test_static_inherit_serialization() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     Node2 p;
+    p.zzz="shijunfeng";
     slow_json::Buffer buffer{1000};
     slow_json::dumps(buffer, p);
     assert_with_message(
-            buffer.string() == R"({"xxx":1,"yyy":1.2345,"zzz":"","test":{"value":123.456},"dq":[],"hahaha":2333})",
+            buffer.string() == R"({"xxx":1,"yyy":1.2345,"zzz":"shijunfeng","test":{"value":123.456},"dq":[],"hahaha":2333})",
             "通过slow_json::dumps序列化得到的结果不正确");
 }

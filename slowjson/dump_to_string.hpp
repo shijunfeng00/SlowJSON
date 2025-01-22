@@ -97,12 +97,20 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             assert_with_message(value != INFINITY, "slowjson暂不支持处理浮点数的inf");
             buffer.try_reserve(buffer.size() + 20);
-            char *end = rapidjson::internal::dtoa(value, buffer.end());
+            char *end = rapidjson::internal::dtoa(value, buffer.end())-1;
             if (std::is_same_v<float, T> && end - buffer.end() > 8) {
                 end = buffer.end() + 8;
             };
             char *begin = *buffer.end() == '-' ? buffer.end() + 1 : buffer.end();
-            while (--end != begin && (*end == '0' || *end == '.'));
+
+            while(end>begin){
+                if((*end=='0' && *(end-1)!='.') || *end=='\0'){
+                    --end;
+                }else{
+                    break;
+                }
+            }
+
             buffer.resize(buffer.size() + end - buffer.end() + 1);
         }
     };

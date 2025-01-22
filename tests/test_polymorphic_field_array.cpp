@@ -44,8 +44,9 @@ void test_polymorphic_field_array() {
     slow_json::Buffer buffer;
     MultiTargetDetectKeyPointResult fuck;
     slow_json::dumps(buffer, fuck);
+
     assert_with_message(buffer.string() ==
-                        "{\"key_point\":[{\"x\":1,\"y\":1},{\"x\":2,\"y\":2},{\"x\":3,\"y\":3},{\"x\":4,\"y\":4},{\"x\":0,\"y\":0},{\"x\":0,\"y\":0}]}",
+                        R"({"key_point":[{"x":1.0,"y":1.0},{"x":2.0,"y":2.0},{"x":3.0,"y":3.0},{"x":4.0,"y":4.0},{"x":0.0,"y":0.0},{"x":0.0,"y":0.0}]})",
                         "通过slow_json::dumps序列化得到额结果不正确");
 
     std::string json_str = R"({"key_point":[{"x":11,"y":11},{"x":12,"y":12},{"x":13,"y":13},{"x":14,"y":14},{"x":15,"y":15},{"x":16,"y":16}]})";

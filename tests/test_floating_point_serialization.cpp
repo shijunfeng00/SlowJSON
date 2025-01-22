@@ -11,12 +11,13 @@ void test_floating_point_serialization() {
     slow_json::Buffer buffer{1000};
     float x = 123.45;
     slow_json::dumps(buffer, x);
-    assert_with_message(buffer.string() == "123.4499", "通过slow_json::dumps序列化浮点数结果错误");
+    assert_with_message(buffer.string() == "123.44999", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
     x = 12345;
     slow_json::dumps(buffer, x);
-    assert_with_message(buffer.string() == "12345", "通过slow_json::dumps序列化浮点数结果错误");
+
+    assert_with_message(buffer.string() == "12345.0", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
     x = 0.12345;
@@ -39,18 +40,23 @@ void test_floating_point_serialization() {
     assert_with_message(buffer.string() == "123.45678901234568", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
-    y = 1234567890123456789.0;
+    y = 1234567890123456.0;
     slow_json::dumps(buffer, y);
-    assert_with_message(buffer.string() == "12345678901234568", "通过slow_json::dumps序列化浮点数结果错误");
+
+    assert_with_message(buffer.string() == "1234567890123456.0", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
     x = 0.0;
     slow_json::dumps(buffer, x);
-    assert_with_message(buffer.string() == "0", "通过slow_json::dumps序列化浮点数结果错误");
+    assert_with_message(buffer.string() == "0.0", "通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 
     x = -0.0;
     slow_json::dumps(buffer, x);
-    assert_with_message(buffer.string() == "-0", "通过slow_json::dumps序列化浮点数结果错误");
+    assert_with_message(buffer.string() == "-0.0", "通过slow_json::dumps序列化浮点数结果错误");
+    buffer.clear();
+
+    slow_json::dumps(buffer,1100.0);
+    assert_with_message(buffer.string()=="1100.0","通过slow_json::dumps序列化浮点数结果错误");
     buffer.clear();
 }

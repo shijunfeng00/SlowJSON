@@ -83,14 +83,15 @@ void test_stl_dumps() {
     auto object = std::tuple{std::vector{"123", "ABC"}, std::unordered_map<std::string, float>{{"XX", 1.23},
                                                                                                {"yy", 5.45}}};
     slow_json::dumps(buffer, object, 4);
-    assert_with_message(buffer.string() == "[\n"
-                                           "    [\n"
-                                           "        \"123\",\n"
-                                           "        \"ABC\"\n"
-                                           "    ],\n"
-                                           "    {\n"
-                                           "        \"yy\":5.449999,\n"
-                                           "        \"XX\":1.23\n"
-                                           "    }\n"
-                                           "]", "通过slow_json::dumps得到的结果不正确");
+    assert_with_message(buffer.string() == R"([
+    [
+        "123",
+        "ABC"
+    ],
+    {
+        "yy":5.4499998,
+        "XX":1.23
+    }
+])", "通过slow_json::dumps得到的结果不正确");
+
 }
