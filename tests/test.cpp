@@ -32,6 +32,7 @@ int main() {
     test_integral_serialization();
     test_non_copy_constructible();
     test_pair_tuple_deserialization();
+    test_function();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

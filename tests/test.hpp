@@ -105,4 +105,9 @@ void test_non_copy_constructible();
  */
 void test_pair_tuple_deserialization();
 
+/**
+ * 测试对于函数或者仿函数的序列化正确性
+ */
+void test_function();
+
 #endif //SLOWJSON_RUN_TEST_HPP
