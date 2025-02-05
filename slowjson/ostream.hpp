@@ -19,14 +19,14 @@ namespace slow_json::ostream {
     private:
         slow_json::Buffer _buffer;
         std::optional<int>_indent;
-    }cout;
-
-    ostream&operator<<(ostream&cout,std::ostream& (*pf)(std::ostream&)) {
+    };
+    static ostream cout;
+    inline ostream&operator<<(ostream&cout,std::ostream& (*pf)(std::ostream&)) {
         std::cout<<pf;
         return cout;
     }
     template<slow_json::concepts::dump_supported JSONable>
-    ostream& operator<<(ostream&cout,const JSONable&object){
+    inline ostream& operator<<(ostream&cout,const JSONable&object){
         if constexpr(slow_json::concepts::string<JSONable>){
             std::cout<<object;
         }else if constexpr (slow_json::concepts::enumerate<JSONable>){

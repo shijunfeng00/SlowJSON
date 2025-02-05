@@ -22,11 +22,11 @@ namespace slow_json {
     public:
         polymorphic_dict(const polymorphic_dict &d1, const polymorphic_dict &d2) :
                 _object(nullptr),
-                _dump_fn([d1, d2](slow_json::Buffer &buffer) {
-                    d1._dump_fn(buffer);
+                _dump_fn([d1, d2](const polymorphic_dict*self,slow_json::Buffer &buffer) {
+                    d1._dump_fn(self,buffer);
                     std::size_t position = buffer.size() - 1;
                     buffer.resize(position);
-                    d2._dump_fn(buffer);
+                    d2._dump_fn(self,buffer);
                     buffer[position] = ',';
                 }),
                 _load_fn([](const slow_json::dynamic_dict &) {
@@ -36,13 +36,13 @@ namespace slow_json {
         template<typename...Args> requires ((concepts::pair<Args>) && ...)
         constexpr explicit polymorphic_dict(Args &&...args):
                 _object{nullptr},
-                _dump_fn{[this, args...](slow_json::Buffer &buffer) {
+                _dump_fn{[args...](const polymorphic_dict*self,slow_json::Buffer &buffer) {
                     using pair_t = std::tuple_element_t<
                             std::tuple_size_v<std::tuple<Args...>> - 1, std::tuple<Args...>>;
                     using field_t = typename pair_t::second_type;
                     if constexpr (std::is_member_object_pointer_v<field_t>) {
                         using class_t = decltype(concepts::helper::match_class_type(field_t{}));
-                        class_t &object = *static_cast<class_t *>(_object);
+                        class_t &object = *static_cast<class_t *>(self->_object);
                         auto add_object = [&object](auto &pair) {
                             auto &[name, field_pointer] = pair;
                             return std::pair{name, std::ref(object.*field_pointer)};
@@ -87,15 +87,15 @@ namespace slow_json {
             this->_object = &object;
         }
 
-        void *_object;
-        std::function<void(slow_json::Buffer &)> _dump_fn;
+        void * _object;
+        std::function<void(const polymorphic_dict*self,slow_json::Buffer &)> _dump_fn;
         std::function<void(const slow_json::dynamic_dict &)> _load_fn;
     };
 
     template<>
     struct DumpToString<polymorphic_dict> : public IDumpToString<DumpToString<polymorphic_dict>> {
         static void dump_impl(Buffer &buffer, const polymorphic_dict &value) noexcept {
-            value._dump_fn(buffer);
+            value._dump_fn(&value,buffer);
         }
     };
 
