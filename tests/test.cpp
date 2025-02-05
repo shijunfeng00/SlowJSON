@@ -6,6 +6,11 @@
 
 int main() {
     printf("Start running test unit.\n");
+#ifdef NDEBUG
+    printf("Running on release mode.");
+#else
+    printf("running on debug mode.");
+#endif
     printf("\n--------------------\n");
     test_buffer();
     test_deserialization();
