@@ -7,7 +7,7 @@
 using namespace slow_json::static_string_literals;
 
 struct Test2024 {
-    float value = 123.456;
+    float value;
 
     static constexpr auto get_config() noexcept {
         return slow_json::static_dict{
@@ -17,11 +17,11 @@ struct Test2024 {
 };
 
 struct Node {
-    int xxx = 1;
-    float yyy = 1.2345;
-    std::string zzz = "shijunfeng";
+    int xxx;
+    float yyy;
+    std::string zzz;
     Test2024 test;
-    std::deque<std::string> dq{"a", "b", "c", "d"};
+    std::deque<std::string> dq;
 
     static constexpr auto get_config() noexcept {
         return slow_json::static_dict{
@@ -35,7 +35,7 @@ struct Node {
 };
 
 struct Node2 : public Node {
-    int hahaha = 2333;
+    long long hahaha;
 
     static constexpr auto get_config() noexcept {
         return slow_json::inherit<Node>(slow_json::static_dict{
@@ -47,10 +47,15 @@ struct Node2 : public Node {
 void test_static_inherit_serialization() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     Node2 p;
+    p.xxx=1;
+    p.yyy=1.2345;
     p.zzz="shijunfeng";
+    p.test.value=123.456;
+    p.dq={"a","b","c","d"};
+    p.hahaha=1234233;
     slow_json::Buffer buffer{1000};
     slow_json::dumps(buffer, p);
     assert_with_message(
-            buffer.string() == R"({"xxx":1,"yyy":1.2345,"zzz":"shijunfeng","test":{"value":123.456},"dq":[],"hahaha":2333})",
+            buffer.string() == R"({"xxx":1,"yyy":1.2345,"zzz":"shijunfeng","test":{"value":123.456},"dq":["a","b","c","d"],"hahaha":1234233})",
             "通过slow_json::dumps序列化得到的结果不正确");
 }
