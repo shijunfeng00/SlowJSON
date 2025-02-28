@@ -4,36 +4,6 @@
 
 该项目大量采用模板元编程和模板特化技巧优化性能并使得框架更加通用，使用者可以像写`Python`一样非常方便的去构造和解析JSON数据
 
-# 更新日志：
-
-----
-
-## 2024/8/9
-
-* 对`static_dict`添加对键值对`value`进行修改的支持
-
-* 对`polymorphic_dict`提供`merge`的支持，允许合并两个`polymorphic_dict`对象
-
-----
-
-## 2024/8/12
-
-* 将浮点数转字符串的方法从`sprintf`修改为`rapidjson::internel::dtoa`，其采用`grisu2`
-  算法完成，比`sprintf`速度更快，后续会将整数转字符串也修改我为`rapidJSON`库的接口。
-
-## 2024/8/14
-
-* 将整数转字符串从`sprintf`修改为`rapidjson::internel::itoa`，相比于`sprintf`提供更快的速度
-
-## 2024/9/6
-
-* 修复了一些内存泄漏和内存异常访问的的BUG
-* 添加对于std::pair，std::tuple的反序列化的支持
-
-## 2024/9/26
-
-* 修复了对于浮点数-0.0序列化得到"-"的bug
-
 # 使用说明
 
 该库采用header only的设计，因此只需要在`CMakeLists.txt`中导入头文件即可
@@ -467,6 +437,62 @@ int main(){
     std::cout<<buffer<<std::endl;
 }
 ```
+
+## 添加自定义类型的支持（宏）
+
+最新加入的功能，可以通过一个非常简单的宏来使得自己写的类支持序列化与反序列化
+
+### `$static`
+
+如果不需要分离实现和定义，则`get_config`函数的返回值可以使用`slow_json::static_dict`
+
+```cpp
+struct Test{
+    int a;
+    std::string b;
+    std::vector<int>c;
+    $static(Test);
+};
+int main() {
+    Test test{1,"sjf",std::vector<int>{1,1,4,5,1,4}};
+    slow_json::cout<<test<<std::endl;
+    return 0;
+}
+```
+
+代码输出结果为
+```json
+{"a":1,"b":"sjf","c":[1,1,4,5,1,4]}
+```
+
+### `$polymorphic_decl`和`$$polymorphic_impl`
+
+如果需要分离实现和定义，则`get_config`函数的返回值可以使用`slow_json::polymorphic`
+分别使用`$polymorphic_decl`和`$$polymorphic_impl`提供定义和实现
+
+```cpp
+struct Test{
+    int a;
+    std::string b;
+    std::vector<int>c;
+    $polymorphic_decl(Test);
+};
+
+$polymorphic_impl(Test,a,b,c);
+
+int main() {
+    Test test{1,"sjf",std::vector<int>{1,1,4,5,1,4}};
+    slow_json::cout<<test<<std::endl;
+    return 0;
+}
+
+```
+代码输出结果为
+```json
+{"a":1,"b":"sjf","c":[1,1,4,5,1,4]}
+```
+
+
 
 ## 添加自定义类型的支持（非侵入式）
 
