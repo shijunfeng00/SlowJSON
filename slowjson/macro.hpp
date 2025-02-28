@@ -52,20 +52,8 @@
 #define PROCESS_FIELD(arg, elem) \
    std::pair{#elem##_ss,&__this::elem},
 
-#define $polymorphic(class_name,...)                     \
-/**                                                                \
- * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化   \
- * @return 一个可序列化的对象                                         \
- */                                                                \
-static slow_json::polymorphic_dict get_config()noexcept{           \
-    using namespace slow_json::static_string_literals;             \
-    using __this=class_name;                                       \
-    return slow_json::polymorphic_dict{                            \
-        SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)                \
-    };                                                             \
-}
 
-#define $static(class_name,...)                               \
+#define $$config(supers,class_name,...)                               \
 /**                                                              \
  * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化 \
  * @return 一个可序列化的对象                                        \
@@ -73,22 +61,46 @@ static slow_json::polymorphic_dict get_config()noexcept{           \
 static auto get_config()noexcept{                                 \
     using namespace slow_json::static_string_literals;            \
     using __this=class_name;                                      \
-    return slow_json::static_dict{                                \
+    return slow_json::inherit supers(slow_json::static_dict{      \
         SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
-    };                                                            \
+    });                                                            \
 }
 
-#define $polymorphic_decl(class_name) static slow_json::polymorphic_dict get_config()noexcept;
-#define $polymorphic_impl(class_name,...)  \
-/**                                                                 \
- * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化    \
- * @return 一个可序列化的对象                                           \
- */                                                                  \
-slow_json::polymorphic_dict class_name::get_config()noexcept{ \
-    using namespace slow_json::static_string_literals;               \
-    using __this=class_name;                                         \
-    return slow_json::polymorphic_dict{                              \
-        SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)                  \
-    };                                                               \
+#define $$config_decl(supers,class_name,...)                               \
+/**                                                              \
+ * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化 \
+ * @return 一个可序列化的对象                                        \
+ */                                                               \
+static decltype([](){                                         \
+    using namespace slow_json::static_string_literals;            \
+    using __this=class_name;                                      \
+    return slow_json::inherit supers(slow_json::static_dict{      \
+        SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
+    });                                                      \
+}()) get_config()noexcept;
+
+
+#define $$config_impl(supers,class_name,...)                               \
+/**                                                              \
+ * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化 \
+ * @return 一个可序列化的对象                                        \
+ */                                                               \
+decltype([](){                                         \
+    using namespace slow_json::static_string_literals;            \
+    using __this=class_name;                                      \
+    return  slow_json::inherit supers(slow_json::static_dict{      \
+        SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
+    });                                                       \
+}()) class_name::get_config()noexcept{                                 \
+    using namespace slow_json::static_string_literals;            \
+    using __this=class_name;                                      \
+    return slow_json::inherit supers(slow_json::static_dict{      \
+        SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
+    });                                                            \
 }
+
+#define $config(class_name,...) $$config(<>,class_name,##__VA_ARGS__)
+#define $config_decl(class_name,...) $$config_decl(<>,class_name,##__VA_ARGS__)
+#define $config_impl(class_name,...) $$config_impl(<>,class_name,##__VA_ARGS__)
+
 #endif //SLOWJSON_MACRO_HPP

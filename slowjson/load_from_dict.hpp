@@ -99,7 +99,7 @@ namespace slow_json {
                 config.set_object(value);
                 LoadFromDict<polymorphic_dict>::load(config, dict);
             } else {
-                constexpr auto config = T::get_config();
+                const auto config = T::get_config();
                 constexpr auto size_v = config.size_v;
                 auto handle_pair = [&value, &dict](const auto &pair) {
                     auto &[field_name, field_ptr] = pair;

@@ -45,9 +45,13 @@ namespace slow_json {
      * @param subclass_info 派生类的属性信息
      * @return 合并父类和派生类属性信息的slow_json::static_dict
      */
-    template<typename SuperClass, concepts::slow_json_static_dict T>
+    template<typename SuperClass=void, concepts::slow_json_static_dict T>
     static constexpr auto inherit(const T &subclass_info) {
-        return slow_json::merge(SuperClass::get_config(), subclass_info);
+        if constexpr(std::is_void_v<SuperClass>){
+            return subclass_info;
+        }else {
+            return slow_json::merge(SuperClass::get_config(), subclass_info);
+        }
     }
 
     /**
