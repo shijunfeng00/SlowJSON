@@ -109,6 +109,15 @@ template<typename T>
 static void dumps(Buffer &buffer, const T &value, std::optional<std::size_t> indent = std::nullopt);
 ```
 
+## `slow_json::cout`
+相当于一个增强版本的`std::cout`，以JSON序列化的方式打印C++各种对象
+```cpp
+slow_json::cout<<std::vector{1,2,3}<<" "<<std::tuple{1,2.5,"sjf"}<<std::endl;
+```
+代码输出为：
+```text
+[1,2,3] [1,2.5,"sjf"]
+```
 # 类型支持
 
 该库支持的数据类型十分丰富，基本涵盖大部分C++常用类型，主要可以描述为下面的类型：
@@ -451,7 +460,7 @@ struct Test{
     int a;
     std::string b;
     std::vector<int>c;
-    $static(Test);
+    $static(Test,a,b,c);
 };
 int main() {
     Test test{1,"sjf",std::vector<int>{1,1,4,5,1,4}};
