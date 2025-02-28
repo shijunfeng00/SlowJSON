@@ -100,6 +100,18 @@ namespace slow_json::concepts {
         }
     }
 
+
+    /**
+     * 类型T是否是一个形参为void且返回值非空的可调用函数或仿函数
+     * @tparam T
+     */
+    template<typename T>
+    concept callable=!std::is_void_v<decltype(std::declval<T>()())>;
+
+    /**
+     * 类型T是否是一个枚举形变量
+     * @tparam T
+     */
     template<typename T>
     concept enumerate=std::is_enum_v<T>;
 
@@ -153,11 +165,19 @@ namespace slow_json::concepts {
                            contains<std::decay_t<T>, std::string, std::string_view, char *, const char *> ||
                            std::is_convertible_v<T, const char *>) && !std::is_same_v<T, std::nullptr_t>;
 
+    /**
+     * 类型T是否是slow_json::static_string
+     * @tparam T
+     */
     template<typename T>
     concept static_string=requires(T t){
         helper::match_static_string(t);
     };
 
+    /**
+     * 类型T是否是std::reference_wrapper<U>
+     * @tparam T
+     */
     template<typename T>
     concept reference_wrapper=requires(T t){
         helper::match_reference_wrapper(t);
@@ -256,6 +276,10 @@ namespace slow_json::concepts {
         T::get_config();
     };
 
+    /**
+     * 类型T是否是一个ISerializable子类
+     * @tparam T
+     */
     template<typename T>
     concept serializable_oop=std::is_base_of_v<ISerializable, T>;
 

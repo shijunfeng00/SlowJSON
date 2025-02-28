@@ -267,6 +267,13 @@ namespace slow_json {
         }
     };
 
+    template<slow_json::concepts::callable T>
+    struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
+        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            DumpToString<decltype(value())>::dump(buffer, value());
+        };
+    };
+
     /**
      * 可序列化的类的处理
      * @tparam T
