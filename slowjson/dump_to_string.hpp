@@ -260,9 +260,13 @@ namespace slow_json {
             if constexpr (std::is_same_v<T, std::nullptr_t>) {
                 buffer.append("null");
             } else {
-                const auto &data = *value;
-                using type = std::remove_const_t<std::remove_reference_t<decltype(*value)>>;
-                DumpToString<type>::dump(buffer, data);
+                if(value==nullptr){
+                    buffer.append("null");
+                }else {
+                    const auto &data = *value;
+                    using type = std::remove_const_t<std::remove_reference_t<decltype(*value)>>;
+                    DumpToString<type>::dump(buffer, data);
+                }
             }
         }
     };

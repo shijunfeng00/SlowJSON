@@ -110,4 +110,14 @@ void test_pair_tuple_deserialization();
  */
 void test_function();
 
+/**
+ * 测试链表序列化和反序列化的正确性，其中节点均采用shared_ptr<int>
+ */
+void test_list_shared_ptr_serialization_deserialization();
+
+/**
+ * 测试链表序列化和反序列化的正确性，其中节点均采用int*
+ */
+void test_list_c_ptr_serialization_deserialization();
+
 #endif //SLOWJSON_RUN_TEST_HPP

@@ -33,6 +33,8 @@ int main() {
     test_non_copy_constructible();
     test_pair_tuple_deserialization();
     test_function();
+    test_list_c_ptr_serialization_deserialization();
+    test_list_shared_ptr_serialization_deserialization();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

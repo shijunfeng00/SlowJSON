@@ -24,9 +24,6 @@ struct NodeTest {
 
 void test_deserialization() {
     printf("run %s\n", __PRETTY_FUNCTION__);
-    assert_with_message(slow_json::concepts::supported<std::shared_ptr<int>> == 0, "相关concepts结果不正确");
-    assert_with_message(slow_json::concepts::load_supported<std::shared_ptr<int>> == 0, "相关concepts结果不正确");
-    assert_with_message(slow_json::concepts::dump_supported<std::shared_ptr<int>> == 1, "相关concepts结果不正确");
     std::vector<NodeTest> p;
     std::string json_str = R"([{
         "x":4,
