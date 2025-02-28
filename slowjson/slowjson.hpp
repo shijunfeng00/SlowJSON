@@ -10,5 +10,6 @@
 #include "supported.hpp"
 #include "inherit.hpp"
 #include "ostream.hpp"
+#include "macro.hpp"
 
 #endif //SLOWJSON_SLOWJSON_HPP
