@@ -40,5 +40,8 @@ namespace slow_json::ostream {
         return cout;
     }
 }
+namespace slow_json{
+    using ostream::cout;
+}
 
 #endif //SLOWJSON_OSTREAM_HPP
