@@ -243,6 +243,27 @@ namespace slow_json {
         }
     };
 
+    template<concepts::is_variant T>
+    struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
+        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            auto do_func=[&]<std::size_t...index>(std::index_sequence<index...>){
+                using variant=decltype(concepts::helper::variant_traits{value});
+                ([&]() {
+                    using maybe_type=typename variant::template maybe_types<index>;
+                    auto value_ptr=std::get_if<maybe_type>(&value);
+                    if(value_ptr!=nullptr){
+                        DumpToString<maybe_type>::dump(buffer,*value_ptr);//只会有一个类型会成功
+                    }
+                }(),...);
+            };
+            if(value.valueless_by_exception()){
+                buffer.append("null"); //空值
+            }else {
+                do_func(std::make_index_sequence<decltype(concepts::helper::variant_traits{value})::size_v>());
+            }
+        }
+    };
+
     template<slow_json::concepts::pair T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
@@ -260,9 +281,13 @@ namespace slow_json {
             if constexpr (std::is_same_v<T, std::nullptr_t>) {
                 buffer.append("null");
             } else {
-                const auto &data = *value;
-                using type = std::remove_const_t<std::remove_reference_t<decltype(*value)>>;
-                DumpToString<type>::dump(buffer, data);
+                if(value==nullptr){
+                    buffer.append("null");
+                }else {
+                    const auto &data = *value;
+                    using type = std::remove_const_t<std::remove_reference_t<decltype(*value)>>;
+                    DumpToString<type>::dump(buffer, data);
+                }
             }
         }
     };

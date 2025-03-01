@@ -4,7 +4,6 @@
 
 #ifndef SLOWJSON_LOAD_FROM_DICT_HPP
 #define SLOWJSON_LOAD_FROM_DICT_HPP
-
 #include "load_from_dict_interface.hpp"
 #include "concetps.hpp"
 #include "polymorphic_dict.hpp"
@@ -40,6 +39,30 @@ namespace slow_json {
                 value = data_cp;
             } else {
                 value = dict.value()->GetString();
+            }
+        }
+    };
+
+    template<concepts::pointer T>
+    struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+            //std::cout<<"caonima1"<<std::endl;
+            if(dict.value()->IsNull()){
+                value=nullptr;
+                return;
+            }
+            if constexpr(std::is_pointer_v<T>){;
+                using base_type=std::remove_pointer_t<T>;
+                if(value==nullptr){
+                    value=new base_type();
+                }
+                LoadFromDict<base_type>::load(*value, dict);
+            }else{
+                using element_type=T::element_type;
+                if(value==nullptr) {
+                    value = T(new element_type());
+                }
+                LoadFromDict<element_type>::load(*value, dict);
             }
         }
     };
