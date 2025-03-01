@@ -10,6 +10,7 @@
 #include<type_traits>
 #include<optional>
 #include<memory>
+#include<variant>
 #include "static_string.hpp"
 
 namespace slow_json {
@@ -24,6 +25,20 @@ namespace slow_json {
 }
 namespace slow_json::concepts {
     namespace helper {
+
+        /**
+         * 匹配std::variant的辅助类
+         * @tparam Args std::variant<Args...>，用于类型匹配
+         */
+        template<typename...Args>
+        struct variant_traits{
+            template<std::size_t i>
+            using maybe_types=std::tuple_element_t<i,std::tuple<Args...>>;
+            constexpr static std::size_t size_v=std::tuple_size_v<std::tuple<Args...>>;
+            explicit variant_traits(const std::variant<Args...>&value):_value(value){}
+            const std::variant<Args...>&_value;
+        };
+
         /**
          * 匹配std::tuple的辅助函数，无实际调用意义
          * @tparam Args
@@ -65,6 +80,9 @@ namespace slow_json::concepts {
         template<typename T>
         void match_weak_ptr(const std::weak_ptr<T> &) {}
 
+        template<typename T>
+        void match_atomic(const std::atomic<T> &) {}
+
         /**
          * 根据成员属性指针类型萃取class类型，用于类型推断，不需要具体实现
          * @tparam FieldType 成员属性指针
@@ -74,6 +92,13 @@ namespace slow_json::concepts {
         template<typename FieldType, typename ClassType>
         auto match_field_type(FieldType ClassType::*) -> FieldType;
 
+        /**
+         * 根据成员属性指针类型萃取class类型，用于类型推断，针对于 int a[3]这样的C指针类型的属性，不需要具体实现
+         * @tparam FieldType
+         * @tparam ClassType
+         * @tparam N
+         * @return
+         */
         template<typename FieldType, typename ClassType, std::size_t N>
         auto match_field_type(FieldType (ClassType::*)[N]) -> FieldType(&)[N];
 
@@ -258,6 +283,13 @@ namespace slow_json::concepts {
     } || std::is_same_v<T, std::nullopt_t>;
 
     /**
+     * 是否是std::variant<Args...>类型
+     * @tparam T
+     */
+    template<typename T>
+    concept is_variant=requires(T t){helper::variant_traits{t};};
+
+    /**
      * 指针类型，包括C指针和三种C++智能指针
      * @tparam T
      */
@@ -266,6 +298,9 @@ namespace slow_json::concepts {
                      std::is_same_v<T, std::nullptr_t> || requires(T t){ helper::match_shared_ptr(t); } ||
                      requires(T t){ helper::match_unique_ptr(t); } || requires(T t){ helper::match_weak_ptr(t); }) &&
                     !string<T>;
+
+    template<typename T>
+    concept atomic=requires(T t){ helper::match_atomic(t);};
 
     /**
      * 支持序列化的类型，通常为用户自定义类型，且正确实现了get_config方法
