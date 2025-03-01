@@ -120,4 +120,6 @@ void test_list_shared_ptr_serialization_deserialization();
  */
 void test_list_c_ptr_serialization_deserialization();
 
+void test_binary_search_tree();
+
 #endif //SLOWJSON_RUN_TEST_HPP
