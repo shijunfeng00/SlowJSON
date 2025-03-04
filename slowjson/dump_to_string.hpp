@@ -243,16 +243,20 @@ namespace slow_json {
         }
     };
 
-    template<concepts::is_variant T>
+    template<concepts::variant T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            const void*value_ptr=nullptr;
             auto do_func=[&]<std::size_t...index>(std::index_sequence<index...>){
                 using variant=decltype(concepts::helper::variant_traits{value});
                 ([&]() {
                     using maybe_type=typename variant::template maybe_types<index>;
-                    auto value_ptr=std::get_if<maybe_type>(&value);
                     if(value_ptr!=nullptr){
-                        DumpToString<maybe_type>::dump(buffer,*value_ptr);//只会有一个类型会成功
+                        return;
+                    }
+                    value_ptr=std::get_if<maybe_type>(&value);
+                    if(value_ptr!=nullptr){
+                        DumpToString<maybe_type>::dump(buffer,*(maybe_type*)value_ptr);//只会有一个类型会成功
                     }
                 }(),...);
             };
