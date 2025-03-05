@@ -57,5 +57,5 @@ void test_static_dict_dumps() {
 ])", "通过slow_json::dumps序列化结果不正确");
 
     constexpr auto value = dict["name"_ss];
-    assert_with_message(value == "shijunfeng", "通过slow_json::dumps序列化结果不正确");
+    assert_with_message(value == std::string{"shijunfeng"}, "通过slow_json::dumps序列化结果不正确");
 }

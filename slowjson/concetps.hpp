@@ -27,7 +27,7 @@ namespace slow_json::concepts {
     namespace helper {
 
         /**
-         * 匹配std::variant的辅助类
+         * 匹配std::variant的辅助类，顺便获得模板参数列表，用于序列化
          * @tparam Args std::variant<Args...>，用于类型匹配
          */
         template<typename...Args>

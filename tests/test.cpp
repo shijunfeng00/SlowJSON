@@ -36,6 +36,7 @@ int main() {
     test_list_c_ptr_serialization_deserialization();
     test_list_shared_ptr_serialization_deserialization();
     test_binary_search_tree();
+    test_macro_serialization();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }
