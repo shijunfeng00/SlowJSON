@@ -25,6 +25,17 @@ namespace slow_json {
             return slow_json::static_dict{std::get<index1>(a)..., std::get<index2>(b)...};
         }(std::make_index_sequence<size1>{}, std::make_index_sequence<size2>{});
     }
+    /**
+     * 合并多个slow_json::static_dict，返回一个包含两所有static_dict中所有健值对的新的static_dict对象
+     * @tparam Dict
+     * @tparam Dicts
+     */
+    template<slow_json::concepts::slow_json_static_dict Dict,typename...Dicts>
+    requires (slow_json::concepts::slow_json_static_dict<Dicts> && ...)
+    static constexpr auto merge(const Dict&dict,const Dicts...dicts) {
+        return merge(dict,merge(dicts...));
+    }
+
 
     /**
      * 合并两个slow_json::polymorphic_dict对象，返回一个包含两个slow_json::polymorphic_dict中所有简直对的新的slow_json::polymorphic对象
