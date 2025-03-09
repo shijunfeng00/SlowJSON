@@ -31,5 +31,12 @@ void test_merge_dict() {
     slow_json::dumps(buffer, json6);
     assert_with_message(buffer.string() == R"({"a":5,"b":7.2})", "通过slow_json::dumps序列化结果错误");
 
+    slow_json::static_dict d1{std::pair{"a",1}};
+    slow_json::static_dict d2{std::pair{"b",1}};
+    slow_json::static_dict d3{std::pair{"c",1}};
+    auto d4=merge(d1,d2,d3);
+    buffer.clear();
+    slow_json::dumps(buffer,d4);
+    assert_with_message(buffer.string()==R"({"a":1,"b":1,"c":1})","通过slow_json::dumps序列化结果不正确");
 
 }
