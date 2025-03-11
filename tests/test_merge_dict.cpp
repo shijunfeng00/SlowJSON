@@ -45,7 +45,7 @@ void test_merge_dict() {
         slow_json::dict d1{{"a",1},{"b",2}};
         slow_json::dict d2{{"c",3},{"d",4}};
         slow_json::dict d3{{"e",5},{"f",6}};
-        auto&d4=merge(d1,d2,d3);
+        auto&d4=slow_json::helper::merge(d1,d2,d3);
         buffer.clear();
         slow_json::dumps(buffer, d4);
         assert_with_message(buffer.string() == R"({"c":3,"d":4,"f":6,"e":5,"b":2,"a":1})", "通过slow_json::dumps序列化结果不正确");
