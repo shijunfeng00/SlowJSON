@@ -10,6 +10,29 @@
 namespace slow_json {
     //此处只适用于inherit，不建议用户亲自调用，可能会带来一些意想不到的情况
     namespace helper{
+
+        /**
+         * 合并两个slow_json::dict，返回一个包含两个slow_json::dict中所有健值对的新的slow_json::dict对象
+         * @param a 被合并的slow_json::dict对象
+         * @param b 被合并的另一个slow_json::dict对象
+         * @return 合并之后的slow_json::dict对象
+         */
+        slow_json::dict& merge(slow_json::dict&a,slow_json::dict&b){
+            a.mp.merge(b.mp);
+            return a;
+        }
+
+        /**
+         * 合并多个slow_json::dict，返回一个包含两个slow_json::dict中所有健值对的新的slow_json::dict对象
+         * @tparam Dicts 多个slow_json::dict组成的变参
+         * @param slow_json::dict对象变参
+         */
+        template<typename...Dicts>
+        requires (std::is_same_v<Dicts,slow_json::dict> && ...)
+        slow_json::dict&merge(slow_json::dict&dict,Dicts&...dicts){
+            return merge(dict,merge(dicts...));
+        }
+
         /**
          * 合并两个slow_json::static_dict，返回一个包含两个static_dict中所有健值对的新的static_dict对象
          * @tparam Ta 被合并的static_dict的类型
