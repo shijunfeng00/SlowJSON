@@ -89,14 +89,14 @@ namespace slow_json {
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
-                    value.emplace(element);
+                    value.emplace(std::move(element));
                 }
             } else {
                 value.clear();
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
-                    value.emplace_back(element);
+                    value.emplace_back(std::move(element));
                 }
             }
         }
