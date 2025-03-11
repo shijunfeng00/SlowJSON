@@ -11,6 +11,10 @@
 #include "concetps.hpp"
 
 namespace slow_json {
+    /**
+     * 接口类
+     * @tparam Self
+     */
     template<typename Self>
     struct IDumpToString {
         template<typename T>
