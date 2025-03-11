@@ -67,7 +67,7 @@
  * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化 \
  * @return 一个可序列化的对象                                        \
  */                                                               \
-static auto get_config()noexcept{                                 \
+static constexpr auto get_config()noexcept{                                 \
     using namespace slow_json::static_string_literals;            \
     using __this=class_name;                                      \
     return slow_json::inherit supers(slow_json::static_dict{      \
