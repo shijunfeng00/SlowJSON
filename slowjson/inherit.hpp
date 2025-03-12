@@ -17,9 +17,11 @@ namespace slow_json {
          * @param b 被合并的另一个slow_json::dict对象
          * @return 合并之后的slow_json::dict对象
          */
-        inline slow_json::dict& merge(slow_json::dict&a,slow_json::dict&b){
-            a.mp.merge(b.mp);
-            return a;
+        inline slow_json::dict merge(slow_json::dict&&a,slow_json::dict&&b){
+            slow_json::dict c{};
+            c.mp.merge(a.mp);
+            c.mp.merge(b.mp);
+            return c;
         }
 
         /**
@@ -29,8 +31,9 @@ namespace slow_json {
          */
         template<typename...Dicts>
         requires (std::is_same_v<Dicts,slow_json::dict> && ...)
-        inline slow_json::dict&merge(slow_json::dict&dict,Dicts&...dicts){
-            return merge(dict,merge(dicts...));
+        inline slow_json::dict merge(slow_json::dict&&dict,Dicts&&...dicts){
+            auto result=merge(std::move(dicts)...);
+            return merge(std::move(dict),std::move(result));
         }
 
         /**
@@ -99,6 +102,19 @@ namespace slow_json {
      */
     template<typename SuperClass, typename T>
     requires std::is_same_v<T, slow_json::polymorphic_dict>
+    inline constexpr auto inherit(const T &subclass_info) {
+        return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
+    }
+
+    /**
+     * 为派生类的序列化提供支持
+     * @tparam SuperClass 父类类型
+     * @tparam T 派生类类型
+     * @param subclass_info 派生类的属性信息
+     * @return 合并父类和派生类属性信息的slow_json::polymorphic_dict
+     */
+    template<typename SuperClass, typename T>
+    requires std::is_same_v<T, slow_json::dict>
     inline constexpr auto inherit(const T &subclass_info) {
         return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
     }
