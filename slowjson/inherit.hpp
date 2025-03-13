@@ -115,8 +115,8 @@ namespace slow_json {
      */
     template<typename SuperClass, typename T>
     requires std::is_same_v<T, slow_json::dict>
-    inline constexpr auto inherit(const T &subclass_info) {
-        return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
+    inline constexpr auto inherit(T&&subclass_info) {
+        return slow_json::helper::merge(SuperClass::get_config(), std::move(subclass_info));
     }
 }
 #endif //SLOWJSON_MERGER_HPP
