@@ -21,15 +21,15 @@ void test(){
 
     slow_json::Buffer buffer;
     slow_json::dumps(buffer,d1);
-    assert_with_message(buffer==R"({"bb":4,"aa":3})","slow_json::dumps序列化结果不正确");
+    assert_with_message(buffer.string()==R"({"bb":4,"aa":3})","slow_json::dumps序列化结果不正确");
     buffer.clear();
 
     slow_json::dumps(buffer,d2);
-    assert_with_message(buffer==R"({"y":4,"x":3})","slow_json::dumps序列化结果不正确");
+    assert_with_message(buffer.string()==R"({"y":4,"x":3})","slow_json::dumps序列化结果不正确");
     buffer.clear();
 
     slow_json::dumps(buffer,d3);
-    assert_with_message(buffer==R"({"y":4,"x":3})","slow_json::dumps序列化结果不正确");
+    assert_with_message(buffer.string()==R"({"y":4,"x":3})","slow_json::dumps序列化结果不正确");
     buffer.clear();
 
 }
