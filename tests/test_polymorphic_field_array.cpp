@@ -16,9 +16,9 @@ struct KeyPoint {
 
     static auto get_config() noexcept {
         using namespace slow_json::static_string_literals;
-        return slow_json::polymorphic_dict{
-                std::pair{"x"_ss, &KeyPoint::x},
-                std::pair{"y"_ss, &KeyPoint::y}
+        return slow_json::dict{
+                {"y"_ss, &KeyPoint::x},
+                {"x"_ss, &KeyPoint::y}
         };
     }
 };
@@ -33,8 +33,8 @@ struct MultiTargetDetectKeyPointResult {
                              {4, 4}};    ///<关键点
     static auto get_config() noexcept {
         using namespace slow_json::static_string_literals;
-        return slow_json::polymorphic_dict{
-                std::pair{"key_point"_ss, &MultiTargetDetectKeyPointResult::key_point}
+        return slow_json::dict{
+                {"key_point"_ss, &MultiTargetDetectKeyPointResult::key_point}
         };
     }
 };
@@ -44,7 +44,6 @@ void test_polymorphic_field_array() {
     slow_json::Buffer buffer;
     MultiTargetDetectKeyPointResult fuck;
     slow_json::dumps(buffer, fuck);
-
     assert_with_message(buffer.string() ==
                         R"({"key_point":[{"x":1.0,"y":1.0},{"x":2.0,"y":2.0},{"x":3.0,"y":3.0},{"x":4.0,"y":4.0},{"x":0.0,"y":0.0},{"x":0.0,"y":0.0}]})",
                         "通过slow_json::dumps序列化得到额结果不正确");

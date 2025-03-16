@@ -20,16 +20,6 @@ void test_merge_dict() {
 
     assert_with_message(buffer.string() == R"({"a":5,"b":7.2})", "通过slow_json::dumps序列化结果错误");
 
-    slow_json::polymorphic_dict json4{
-            std::pair{"a"_ss, 5}
-    };
-    slow_json::polymorphic_dict json5{
-            std::pair{"b"_ss, 7.2}
-    };
-    slow_json::polymorphic_dict json6 = slow_json::helper::merge(json4, json5);
-    buffer.clear();
-    slow_json::dumps(buffer, json6);
-    assert_with_message(buffer.string() == R"({"a":5,"b":7.2})", "通过slow_json::dumps序列化结果错误");
 
     {
         slow_json::static_dict d1{std::pair{"a", 1}};

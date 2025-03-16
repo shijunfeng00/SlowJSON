@@ -10,8 +10,8 @@ struct TestPolymorphic {
     float value;
 
     static auto get_config() noexcept {
-        return slow_json::polymorphic_dict{
-                std::pair{"value"_ss, &TestPolymorphic::value}
+        return slow_json::dict{
+                {"value", &TestPolymorphic::value}
         };
     }
 };
@@ -24,12 +24,12 @@ struct NodePolymorphic {
     TestPolymorphic test;
 
     static auto get_config() noexcept {
-        return slow_json::polymorphic_dict{
-                std::pair{"xxx"_ss, &NodePolymorphic::xxx},
-                std::pair{"yyy"_ss, &NodePolymorphic::yyy},
-                std::pair{"zzz"_ss, &NodePolymorphic::zzz},
-                std::pair{"dq"_ss, &NodePolymorphic::dq},
-                std::pair{"test"_ss, &NodePolymorphic::test}
+        return slow_json::dict{
+                {"xxx", &NodePolymorphic::xxx},
+                {"yyy", &NodePolymorphic::yyy},
+                {"zzz", &NodePolymorphic::zzz},
+                {"dq", &NodePolymorphic::dq},
+                {"test", &NodePolymorphic::test}
         };
     }
 };

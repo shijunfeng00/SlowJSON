@@ -7,7 +7,6 @@
 
 #include "dump_to_string_interface.hpp"
 #include "concetps.hpp"
-#include "polymorphic_dict.hpp"
 #include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
@@ -335,11 +334,7 @@ namespace slow_json {
     template<slow_json::concepts::serializable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
-            if constexpr (std::is_same_v<decltype(T::get_config()), slow_json::polymorphic_dict>) {
-                auto config = T::get_config();
-                config.set_object(value);
-                DumpToString<decltype(config)>::dump(buffer, config);
-            }else if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
+            if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&[k,v]:config.mp){
                     const void*value_ptr=std::get_if<helper::field_wrapper>(&v);

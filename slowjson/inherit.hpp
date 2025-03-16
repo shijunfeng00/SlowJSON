@@ -63,18 +63,6 @@ namespace slow_json {
         inline constexpr auto merge(const Dict&dict,const Dicts...dicts) {
             return merge(dict,merge(dicts...));
         }
-
-
-        /**
-         * 合并两个slow_json::polymorphic_dict对象，返回一个包含两个slow_json::polymorphic_dict中所有简直对的新的slow_json::polymorphic对象
-         * @param d1 被合并的slow_json::polymorphic_dict对象
-         * @param d2 被合并的另一个slow_json::polymorphic对象
-         * @return 合并之后新的slow_json::polymorphic_dict对象
-         */
-        inline slow_json::polymorphic_dict
-        merge(const slow_json::polymorphic_dict &d1, const slow_json::polymorphic_dict &d2) {
-            return {d1, d2};
-        }
     }
 
     /**
@@ -91,19 +79,6 @@ namespace slow_json {
         }else {
             return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
         }
-    }
-
-    /**
-     * 为派生类的序列化提供支持
-     * @tparam SuperClass 父类类型
-     * @tparam T 派生类类型
-     * @param subclass_info 派生类的属性信息
-     * @return 合并父类和派生类属性信息的slow_json::polymorphic_dict
-     */
-    template<typename SuperClass, typename T>
-    requires std::is_same_v<T, slow_json::polymorphic_dict>
-    inline constexpr auto inherit(const T &subclass_info) {
-        return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
     }
 
     /**

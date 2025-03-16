@@ -9,6 +9,9 @@
 #define SLOWJSON_DICT_HPP
 
 #include "dump_to_string_interface.hpp"
+#include "load_from_dict_interface.hpp"
+#include "static_dict.hpp"
+#include "dynamic_dict.hpp"
 #include <functional>
 #include <vector>
 #include <variant>
@@ -117,9 +120,6 @@ namespace slow_json {
      * - 嵌套字典：std::vector<pair>或std::initializer_list<pair>
      */
     struct pair {
-        /// @name 构造函数族
-        /// @{
-
         /**
          * @brief 构造基本类型键值对
          * @param key JSON键
@@ -127,6 +127,16 @@ namespace slow_json {
          */
         constexpr pair(const char* key, const helper::serializable_wrapper& value)
                 : _key{key}, _value{value} {}
+
+        /**
+         * @brief 构造基本类型键值对
+         * @tparam Key slow_json::static_string类型，兼容以前的接口
+         * @param key JSON键
+         * @param value 基本类型值
+         */
+        template<concepts::static_string Key>
+        constexpr pair(const Key&key, const helper::serializable_wrapper& value)
+                : _key{Key::with_end()}, _value{value} {}
 
         /**
          * @brief 构造列表类型键值对
@@ -137,6 +147,16 @@ namespace slow_json {
                 : _key{key}, _value{value} {}
 
         /**
+         * @brief 构造列表类型键值对
+         * @tparam Key slow_json::static_string类型，兼容以前的接口
+         * @param key JSON键
+         * @param value 已构建的vector列表
+         */
+        template<concepts::static_string Key>
+        constexpr pair(const Key&key, const std::vector<helper::serializable_wrapper>& value)
+                : _key{Key::with_end()}, _value{value} {}
+
+        /**
          * @brief 构造嵌套字典键值对
          * @param key JSON键
          * @param value 字典vector
@@ -145,13 +165,32 @@ namespace slow_json {
                 : _key{key}, _value{value} {}
 
         /**
+         * @brief 构造嵌套字典键值对
+         * @tparam Key slow_json::static_string类型，兼容以前的接口
+         * @param key JSON键
+         * @param value 字典vector
+         */
+        template<concepts::static_string Key>
+        constexpr pair(const Key&key, const std::vector<pair>& value)
+                : _key{Key::with_end()}, _value{value} {}
+
+        /**
          * @brief 构造类成员指针键值对
          * @param key JSON键
          * @param value 类成员指针包装器
          */
         constexpr pair(const char* key, const helper::field_wrapper& value)
                 : _key{key}, _value{value} {}
-        /// @}
+
+        /**
+         * @brief 构造类成员指针键值对
+         * @tparam Key slow_json::static_string类型，兼容以前的接口
+         * @param key JSON键
+         * @param value 类成员指针包装器
+         */
+        template<concepts::static_string Key>
+        constexpr pair(const Key&key, const helper::field_wrapper& value)
+                : _key{Key::with_end()}, _value{value} {}
 
         const char* _key; ///< JSON键字符串
         using value_t = std::variant<  ///< 值类型的variant定义
@@ -198,8 +237,28 @@ namespace slow_json {
      * @note 性能略低于static_dict，适合需要动态构建的场景
      */
     struct dict {
-        /// @name 构造函数
-        /// @{
+
+        dict(){};
+
+        /**
+         * 从std::vector<std::pair<const char*,V>>中构造
+         * 这是为了兼容之前的接口
+         * @tparam V
+         * @param args
+         */
+        template<typename...K,typename...V>
+        requires (( concepts::string<K> && !concepts::static_string<K>) && ...)
+        dict(const std::pair<K,V>&...args):dict(std::vector<pair>{pair{args.first,args.second}...}){}
+
+        /**
+         * 从std::vector<std::pair<static_string,V>>中构造
+         * 这是为了兼容之前的接口
+         * @tparam K
+         * @tparam V
+         */
+        template<typename ...K,typename...V>
+        requires (concepts::static_string<K> && ...)
+        dict(const std::pair<K,V>&...args):dict(std::vector<pair>{pair{K::with_end(),args.second}...}){}
 
         /**
          * @brief 从pair vector构造

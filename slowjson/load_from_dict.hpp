@@ -6,7 +6,6 @@
 #define SLOWJSON_LOAD_FROM_DICT_HPP
 #include "load_from_dict_interface.hpp"
 #include "concetps.hpp"
-#include "polymorphic_dict.hpp"
 #include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
@@ -122,12 +121,7 @@ namespace slow_json {
     template<concepts::serializable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            if constexpr (std::is_same_v<decltype(T::get_config()), polymorphic_dict>) {
-                polymorphic_dict config = T::get_config();
-                config.set_object(value);
-                LoadFromDict<polymorphic_dict>::load(config, dict);
-            }
-            else if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
+            if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&[k,v]:config.mp){
                     const void*value_ptr=std::get_if<helper::field_wrapper>(&v);

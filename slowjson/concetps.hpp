@@ -19,8 +19,6 @@ namespace slow_json {
 
     class dynamic_dict;
 
-    struct polymorphic_dict;
-
     struct ISerializable;
 }
 namespace slow_json::concepts {

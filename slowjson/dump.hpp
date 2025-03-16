@@ -7,7 +7,7 @@
 
 #include "dump_to_string.hpp"
 #include "indent.hpp"
-#include "polymorphic_dict.hpp"
+#include "dict.hpp"
 
 namespace slow_json {
     /**

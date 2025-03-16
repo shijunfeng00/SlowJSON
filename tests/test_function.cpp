@@ -8,11 +8,11 @@ using namespace slow_json::static_string_literals;
 
 void test_function() {
     printf("run %s\n", __PRETTY_FUNCTION__);
-    slow_json::polymorphic_dict dict{
+    slow_json::dict dict{
             std::pair{"function",[](){return "test";}}
     };
 
-    slow_json::polymorphic_dict dict2{
+    slow_json::dict dict2{
             std::pair{"function",[](){return "test2";}}
     };
 
