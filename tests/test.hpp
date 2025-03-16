@@ -120,6 +120,17 @@ void test_list_shared_ptr_serialization_deserialization();
  */
 void test_list_c_ptr_serialization_deserialization();
 
+/**
+ * 测试序列化反序列化二叉搜索树
+ */
 void test_binary_search_tree();
+
+/**
+ * 测试$config宏的序列化功能
+ */
+void test_macro_serialization();
+
+// 测试使用slow_json::dict来进行C++ Class自定义对象的序列化，反序列化，以及继承派生类的处理
+void run_dict_serialization_deserialization_inherit();
 
 #endif //SLOWJSON_RUN_TEST_HPP

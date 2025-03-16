@@ -5,7 +5,7 @@
 #ifndef SLOWJSON_SERIALIZABLE_HPP
 #define SLOWJSON_SERIALIZABLE_HPP
 
-#include "polymorphic_dict.hpp"
+#include "dict.hpp"
 #include "dynamic_dict.hpp"
 #include "dump_to_string_interface.hpp"
 #include "load_from_dict_interface.hpp"
@@ -21,7 +21,7 @@ namespace slow_json {
          * 将对象序列化为JSON
          * @return
          */
-        [[nodiscard]] virtual slow_json::polymorphic_dict get_config() const noexcept = 0;
+        [[nodiscard]] virtual slow_json::dict get_config() const noexcept = 0;
 
         /**
          * 从JSON中反序列化对象

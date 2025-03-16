@@ -7,7 +7,7 @@
 
 #include "dump_to_string_interface.hpp"
 #include "concetps.hpp"
-#include "polymorphic_dict.hpp"
+#include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
 #include <cmath>
@@ -52,17 +52,15 @@ namespace slow_json {
                     const char *end = rapidjson::internal::i32toa(value, buffer.end());
                     buffer.resize(buffer.size() + end - buffer.end());
                 }
-            } else if constexpr (sizeof(T) == 8) {
-                if (value >= INT64_MAX) {
-                    auto length = get_itoa_length(value);
-                    buffer.try_reserve(buffer.size() + length); //预留足够的空间
-                    sprintf(buffer.end(), "%" PRIu64, value);
-                    buffer.resize(buffer.size() + length);
-                } else {
+            } else if constexpr (sizeof(T) == 8 && std::is_unsigned_v<T>) {
+                auto length = get_itoa_length(value);
+                buffer.try_reserve(buffer.size() + length); //预留足够的空间
+                sprintf(buffer.end(), "%" PRIu64, value);
+                buffer.resize(buffer.size() + length);
+            } else if constexpr (sizeof(T) == 8 && !std::is_unsigned_v<T>) {
                     buffer.try_reserve(buffer.size() + 21);
                     const char *end = rapidjson::internal::i64toa(value, buffer.end());
                     buffer.resize(buffer.size() + end - buffer.end());
-                }
             }
         }
     };
@@ -243,16 +241,21 @@ namespace slow_json {
         }
     };
 
-    template<concepts::is_variant T>
+    template<concepts::variant T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
+            const void*value_ptr=nullptr;
             auto do_func=[&]<std::size_t...index>(std::index_sequence<index...>){
                 using variant=decltype(concepts::helper::variant_traits{value});
                 ([&]() {
+                    // 遍历所有可能的类型
                     using maybe_type=typename variant::template maybe_types<index>;
-                    auto value_ptr=std::get_if<maybe_type>(&value);
                     if(value_ptr!=nullptr){
-                        DumpToString<maybe_type>::dump(buffer,*value_ptr);//只会有一个类型会成功
+                        return;
+                    }
+                    value_ptr=std::get_if<maybe_type>(&value);
+                    if(value_ptr!=nullptr){
+                        DumpToString<maybe_type>::dump(buffer,*(maybe_type*)value_ptr);//只会有一个类型会成功
                     }
                 }(),...);
             };
@@ -299,6 +302,31 @@ namespace slow_json {
         };
     };
 
+
+
+    template<>
+    struct DumpToString<helper::serializable_wrapper>:public IDumpToString<DumpToString<helper::serializable_wrapper>>{
+        static void dump_impl(Buffer&buffer,const helper::serializable_wrapper&object)noexcept{
+            assert_with_message((bool)object.dump_fn,"dump_fn为空，可能存在悬空引用问题");
+            object.dump_fn(buffer);
+        }
+    };
+
+    template<>
+    struct DumpToString<helper::field_wrapper>:public IDumpToString<DumpToString<helper::field_wrapper>>{
+        static void dump_impl(Buffer&buffer,const helper::field_wrapper&object)noexcept{
+            object.dump_fn(buffer);
+        }
+    };
+
+    template<>
+    struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
+        static void dump_impl(Buffer&buffer,const dict&object)noexcept{
+            DumpToString<decltype(object.mp)>::dump(buffer,object.mp);
+        }
+    };
+
+
     /**
      * 可序列化的类的处理
      * @tparam T
@@ -306,11 +334,18 @@ namespace slow_json {
     template<slow_json::concepts::serializable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
-            if constexpr (std::is_same_v<decltype(T::get_config()), slow_json::polymorphic_dict>) {
-                auto config = T::get_config();
-                config.set_object(value);
-                DumpToString<decltype(config)>::dump(buffer, config);
-            } else {
+            if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
+                slow_json::dict config=T::get_config();
+                for(const auto&[k,v]:config.mp){
+                    const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
+                    if(value_ptr!=nullptr){
+                        ((helper::field_wrapper*)value_ptr)->_object_ptr=&value;
+                    }else{}
+                };
+                DumpToString<decltype(config)>::dump(buffer,config);
+            }
+            else {
+                // slow_json::static_dict
                 auto get_value = []<typename Tp>(const Tp &tp) {
                     if constexpr (concepts::slow_json_static_dict<Tp>) {
                         return static_cast<typename Tp::super_type>(tp);

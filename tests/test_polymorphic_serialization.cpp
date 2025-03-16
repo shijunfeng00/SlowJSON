@@ -13,15 +13,15 @@ struct NodeP {
     std::string zzz = "shijunfeng";
     std::deque<std::string> dq{"a", "b", "c", "d"};
 
-    static slow_json::polymorphic_dict get_config() noexcept;
+    static slow_json::dict get_config() noexcept;
 };
 
-slow_json::polymorphic_dict NodeP::get_config() noexcept {
-    return slow_json::polymorphic_dict{
-            std::pair{"xxx"_ss, &NodeP::xxx},
-            std::pair{"yyy"_ss, &NodeP::yyy},
+slow_json::dict NodeP::get_config() noexcept {
+    return slow_json::dict{
+            std::pair{"dq"_ss, &NodeP::dq},
             std::pair{"zzz"_ss, &NodeP::zzz},
-            std::pair{"dq"_ss, &NodeP::dq}
+            std::pair{"yyy"_ss, &NodeP::yyy},
+            std::pair{"xxx"_ss, &NodeP::xxx}
     };
 }
 
@@ -31,6 +31,9 @@ void test_polymorphic_serialization() {
     NodeP p;
     slow_json::Buffer buffer;
     slow_json::dumps(buffer, p, 4);
+
+    std::cout<<"JSON:"<<buffer<<std::endl;
+
     assert_with_message(buffer.string() == R"({
     "xxx":1,
     "yyy":1.2345,

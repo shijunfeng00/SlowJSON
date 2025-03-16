@@ -6,7 +6,7 @@
 #define SLOWJSON_LOAD_FROM_DICT_HPP
 #include "load_from_dict_interface.hpp"
 #include "concetps.hpp"
-#include "polymorphic_dict.hpp"
+#include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
 namespace slow_json {
@@ -14,6 +14,7 @@ namespace slow_json {
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             if constexpr (std::is_same_v<T, uint8_t>) {
+                assert_with_message(dict.value()->IsInt() || dict.value()->IsInt64(),"试图将数据解析为整数");
                 auto data = dict.value()->Get<int>();
                 assert_with_message(0 <= data && data <= 255, "发现整型溢出行为");
                 value = data;
@@ -22,6 +23,9 @@ namespace slow_json {
                 assert_with_message(-128 <= data && data <= 127, "发现整型溢出行为");
                 value = data;
             } else {
+                assert_with_message(dict.value()->IsNumber() && (std::is_integral_v<T> || std::is_floating_point_v<T>),"试图将数据解析为整数");
+                assert_with_message(
+                        (dict.value()->IsNumber() || dict.value()->IsString()) && std::is_fundamental_v<T>,"试图将对象数据解析为基本类型");
                 value = dict.value()->Get<T>();
             }
         }
@@ -84,14 +88,14 @@ namespace slow_json {
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
-                    value.emplace(element);
+                    value.emplace(std::move(element));
                 }
             } else {
                 value.clear();
                 for (int i = 0; i < dict.size(); i++) {
                     element_type element;
                     LoadFromDict<element_type>::load(element, dict[i]);
-                    value.emplace_back(element);
+                    value.emplace_back(std::move(element));
                 }
             }
         }
@@ -117,11 +121,21 @@ namespace slow_json {
     template<concepts::serializable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            if constexpr (std::is_same_v<decltype(T::get_config()), polymorphic_dict>) {
-                polymorphic_dict config = T::get_config();
-                config.set_object(value);
-                LoadFromDict<polymorphic_dict>::load(config, dict);
-            } else {
+            if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
+                slow_json::dict config=T::get_config();
+                for(const auto&[k,v]:config.mp){
+                    const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
+                    if(value_ptr!=nullptr){
+                        // 目前只考虑在get_config中用于自定义class对象的反序列化
+                        auto&field_value=*((helper::field_wrapper*)value_ptr);
+                        field_value._object_ptr=&value;
+                        field_value.load_fn(dict[k]);
+                    }else{
+                        assert_with_message(value_ptr!=nullptr,"目前只考虑在get_config中用于自定义class对象的反序列化，尚未实现任意slow_json::dict的反序列化");
+                    }
+                };
+            }
+            else {
                 const auto config = T::get_config();
                 constexpr auto size_v = config.size_v;
                 auto handle_pair = [&value, &dict](const auto &pair) {

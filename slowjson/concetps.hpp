@@ -19,15 +19,13 @@ namespace slow_json {
 
     class dynamic_dict;
 
-    struct polymorphic_dict;
-
     struct ISerializable;
 }
 namespace slow_json::concepts {
     namespace helper {
 
         /**
-         * 匹配std::variant的辅助类
+         * 匹配std::variant的辅助类，顺便获得模板参数列表，用于序列化
          * @tparam Args std::variant<Args...>，用于类型匹配
          */
         template<typename...Args>
@@ -287,7 +285,7 @@ namespace slow_json::concepts {
      * @tparam T
      */
     template<typename T>
-    concept is_variant=requires(T t){helper::variant_traits{t};};
+    concept variant=requires(T t){helper::variant_traits{t};};
 
     /**
      * 指针类型，包括C指针和三种C++智能指针
