@@ -252,7 +252,7 @@ SlowJSON 支持以下类型及其组合：
 - **STL 容器**：`std::vector`、`std::map`、`std::tuple`、`std::deque` 、std::list等。
 - **指针与可选值**：`T*`、`std::shared_ptr<T>`、`std::optional<T>`，并支持将 `nullptr` 和 `std::nullopt`视作空值。
 - **C/C++数组**：`std::array<T, N>`、`T[N]`。
-- **元组和键值对**：`std::tuple`、`std::pair`、`slow_json::static_dict`、`slow_json::polymorphic_dict`。
+- **元组和键值对**：`std::tuple`、`std::pair`、`slow_json::static_dict`、`slow_json::dict`。
 - **枚举型变量**：`enum{...}`，如`enum{A,B,C}`,将`A`变为字符串`"A"`，或者从字符串`"C"`还原枚举型变量`C`
 - **用户自定义类型**：通过侵入式或非侵入式方式提供支持的类,。
 - **复杂嵌套类型**：上述类型的任意组合，例如std::tuple<std::unordered_map<std::string,MyClass>,std::vector<int>>
@@ -322,9 +322,9 @@ terminate called without an active exception
 - **特点**：利用模板元编程，性能优异。
 - **限制**：含模板参数，无法在头文件和实现分离时使用。
 
-### `polymorphic_dict`
+### `dict`
 
-- **描述**：多态字典，用于序列化，支持声明和实现分离。
+- **描述**：运行时动态字典，用于序列化，支持声明和实现分离。
 - **特点**：基于 `std::function`，适用于 `.hpp`/`.cpp` 分离场景。
 - **限制**：仅用于序列化，不支持动态访问。
 
@@ -449,7 +449,7 @@ int main() {
 ### 侵入式支持
 
 实际上对于`SlowJSON`而言，需要自定义对象提供如下的`get_config`成员函数，
-根据使用场景选择返回`static_dict`(`auto`)或者`polymorphic_dict`，前者用于`header only`，后者用于需要声明和实现分离的场景。
+根据使用场景选择返回`static_dict`(`auto`)或者`dict`，前者用于`header only`，后者用于需要声明和实现分离的场景。
 ```cpp
 #include "slowjson.hpp"
 #include <vector>
@@ -472,8 +472,8 @@ struct Node2{
     int x=1;
     std::vector<float> y={1.2,3.4};
     std::string z="STR";
-    static slow_json::polymorphic_dict get_config()noexcept{
-        return slow_json::polymorphic_dict{
+    static slow_json::dict get_config()noexcept{
+        return slow_json::dict{
                 std::pair{"x"_ss,&Node::x},
                 std::pair{"y"_ss,&Node::y},
                 std::pair{"z"_ss,&Node::z}
@@ -626,7 +626,7 @@ int main() {
 
 待补充
 
-### 何时使用`polymorphic_dict`来替代`static_dict`
+### 何时使用`dict`来替代`static_dict`
 
 待补充
 
