@@ -54,7 +54,6 @@ namespace slow_json {
                 delete allocator;
                 throw std::runtime_error(error_message);
             }
-//            value->CopyFrom(document, document.GetAllocator());
             _shared = new SharedData(document, allocator, true);
             _value = document;
         }
@@ -156,9 +155,8 @@ namespace slow_json {
          * @note 通过此方法创建的对象不会管理内存，调用修改接口可能导致未定义行为
          */
         static dynamic_dict wrap(const rapidjson::Value &value) {
-            auto allocator = new rapidjson::MemoryPoolAllocator<>(1024 * 64);
-            // 创建共享数据，但标记不拥有内存（不释放底层内存）
-            auto *shared = new SharedData(const_cast<rapidjson::Value *>(&value), allocator, false);
+            // 不会涉及到数据修改，因此不需要传入allocator
+            auto *shared = new SharedData(const_cast<rapidjson::Value *>(&value), nullptr, false);
             return {shared, const_cast<rapidjson::Value *>(&value)};
         }
 
