@@ -28,10 +28,15 @@ set(CMAKE_CXX_STANDARD 20)
 if (BUILD_TEST)
     message("编译单元测试代码")
     file(GLOB TEST_CPP "tests/*.cpp")
-
     add_executable(SlowJson
             ${TEST_CPP}
+    )
 
+elseif(BUILD_BENCHMARK)
+    message("编译基准测试代码")
+    file(GLOB BENCHMARK_CPP "benchmarks/*.cpp")
+    add_executable(SlowJson
+            ${BENCHMARK_CPP}
     )
 
 else ()
