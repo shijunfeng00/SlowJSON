@@ -327,7 +327,7 @@ namespace slow_json {
                 assert_with_message(value_ptr != nullptr, "序列化失败：未知的值类型");
             }
         }
-
+    private:
         /// @brief 内部存储结构
         std::unordered_map<const char*, std::variant<
                 helper::serializable_wrapper,  // 基本类型元素

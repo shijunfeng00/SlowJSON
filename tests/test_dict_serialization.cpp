@@ -32,8 +32,6 @@ void test_polymorphic_serialization() {
     slow_json::Buffer buffer;
     slow_json::dumps(buffer, p, 4);
 
-    std::cout<<"JSON:"<<buffer<<std::endl;
-
     assert_with_message(buffer.string() == R"({
     "xxx":1,
     "yyy":1.2345,
