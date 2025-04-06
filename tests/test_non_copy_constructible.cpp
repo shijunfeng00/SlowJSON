@@ -57,7 +57,6 @@ void test_non_copy_constructible() {
     };
     buffer.clear();
     slow_json::dumps(buffer, dict);
-    std::cout<<"buffer:"<<buffer<<std::endl;
     assert_with_message(
             buffer.string() == R"({"object":{"dq":["a","b","c","d"],"zzz":"shijunfeng","yyy":1.2345,"xxx":1}})",
             "slow_json::dumps序列化得到的结果不正确");
