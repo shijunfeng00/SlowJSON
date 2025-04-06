@@ -5,9 +5,9 @@
 #include <chrono>
 #include <iostream>
 #include <list>
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
+#include "document.h"
+#include "stringbuffer.h"
+#include "writer.h"
 namespace nested_serialization_deserialization {
 // ------------------ 数据结构定义 ------------------
     struct NestedNode {
