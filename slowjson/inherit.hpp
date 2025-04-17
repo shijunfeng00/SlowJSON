@@ -19,8 +19,12 @@ namespace slow_json {
          */
         inline slow_json::dict merge(slow_json::dict&&a,slow_json::dict&&b){
             slow_json::dict c{};
-            c.mp.merge(a.mp);
-            c.mp.merge(b.mp);
+            static_cast<dict::map_type*>(c._object)->merge(
+                    *static_cast<dict::map_type*>(a._object)
+            );
+            static_cast<dict::map_type*>(c._object)->merge(
+                    *static_cast<dict::map_type*>(b._object)
+            );
             return c;
         }
 

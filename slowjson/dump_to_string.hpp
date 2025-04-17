@@ -307,7 +307,7 @@ namespace slow_json {
     template<>
     struct DumpToString<helper::serializable_wrapper>:public IDumpToString<DumpToString<helper::serializable_wrapper>>{
         static void dump_impl(Buffer&buffer,const helper::serializable_wrapper&object)noexcept{
-            assert_with_message((bool)object.dump_fn,"dump_fn为空，可能存在悬空引用问题");
+            assert_with_message(object._fn,"_fn为空，可能存在悬空引用问题");
             object.dump_fn(buffer);
         }
     };
@@ -322,7 +322,7 @@ namespace slow_json {
     template<>
     struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
         static void dump_impl(Buffer&buffer,const dict&object)noexcept{
-            DumpToString<decltype(object.mp)>::dump(buffer,object.mp);
+            DumpToString<dict::map_type>::dump(buffer,*static_cast<dict::map_type*>(object._object));
         }
     };
 
@@ -336,7 +336,7 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
-                for(const auto&[k,v]:config.mp){
+                for(const auto&[k,v]:*static_cast<dict::map_type*>(config._object)){
                     const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
                     if(value_ptr!=nullptr){
                         ((helper::field_wrapper*)value_ptr)->_object_ptr=&value;
