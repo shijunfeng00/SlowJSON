@@ -135,125 +135,123 @@ namespace slow_json {
         private:
             ifunction * _fn;
         };
+        /**
+         * @brief JSON键值对结构
+         * @details 支持多种值类型：
+         * - 基本类型：通过serializable_wrapper包装
+         * - 类成员指针：通过field_wrapper包装
+         * - 列表：std::vector或std::initializer_list包装的基本类型
+         * - 嵌套字典：std::vector<pair>或std::initializer_list<pair>
+         */
+        struct pair {
+            /**
+             * @brief 构造基本类型键值对
+             * @param key JSON键
+             * @param value 基本类型值
+             */
+            constexpr pair(const char* key, const helper::serializable_wrapper& value)
+                    : _key{key}, _value{value} {}
+
+            /**
+             * @brief 构造基本类型键值对
+             * @tparam Key slow_json::static_string类型，兼容以前的接口
+             * @param key JSON键
+             * @param value 基本类型值
+             */
+            template<concepts::static_string Key>
+            constexpr pair(const Key&key, const helper::serializable_wrapper& value)
+                    : _key{Key::with_end()}, _value{value} {}
+
+            /**
+             * @brief 构造列表类型键值对
+             * @param key JSON键
+             * @param value 已构建的vector列表
+             */
+            constexpr pair(const char* key, const std::vector<helper::serializable_wrapper>& value)
+                    : _key{key}, _value{value} {}
+
+            /**
+             * @brief 构造列表类型键值对
+             * @tparam Key slow_json::static_string类型，兼容以前的接口
+             * @param key JSON键
+             * @param value 已构建的vector列表
+             */
+            template<concepts::static_string Key>
+            constexpr pair(const Key&key, const std::vector<helper::serializable_wrapper>& value)
+                    : _key{Key::with_end()}, _value{value} {}
+
+            /**
+             * @brief 构造嵌套字典键值对
+             * @param key JSON键
+             * @param value 字典vector
+             */
+            pair(const char* key, const std::vector<pair>& value)
+                    : _key{key}, _value{value} {}
+
+            /**
+             * @brief 构造嵌套字典键值对
+             * @tparam Key slow_json::static_string类型，兼容以前的接口
+             * @param key JSON键
+             * @param value 字典vector
+             */
+            template<concepts::static_string Key>
+            constexpr pair(const Key&key, const std::vector<pair>& value)
+                    : _key{Key::with_end()}, _value{value} {}
+
+            /**
+             * @brief 构造类成员指针键值对
+             * @param key JSON键
+             * @param value 类成员指针包装器
+             */
+            constexpr pair(const char* key, const helper::field_wrapper& value)
+                    : _key{key}, _value{value} {}
+
+            /**
+             * @brief 构造类成员指针键值对
+             * @tparam Key slow_json::static_string类型，兼容以前的接口
+             * @param key JSON键
+             * @param value 类成员指针包装器
+             */
+            template<concepts::static_string Key>
+            constexpr pair(const Key&key, const helper::field_wrapper& value)
+                    : _key{Key::with_end()}, _value{value} {}
+
+            const char* _key; ///< JSON键字符串
+            using value_t = std::variant<  ///< 值类型的variant定义
+                    helper::serializable_wrapper,   // 基本类型
+                    helper::field_wrapper,          // 类成员指针
+                    std::vector<helper::serializable_wrapper>,   // 显式列表
+                    std::initializer_list<helper::serializable_wrapper>, // 初始化列表
+                    std::vector<pair>,              // 显式嵌套字典
+                    std::initializer_list<pair>     // 初始化列表嵌套字典
+            >;
+            value_t _value; ///< 存储的值
+
+            /**
+             * @brief 获取键值
+             * @return const char* 键字符串
+             */
+            const char* key() const noexcept { return this->_key; }
+
+            /**
+             * @brief 获取值引用
+             * @return const value_t& 值variant的常量引用
+             */
+            const value_t& value() const noexcept { return _value; }
+
+            /**
+             * @brief 类型安全的取值方法
+             * @tparam T 期望的类型
+             * @return const void* 类型指针或nullptr
+             */
+            template<typename T>
+            const void* get_if() const noexcept {
+                return std::get_if<T>(&this->_value);
+            }
+        };
     }
 
-    /**
-     * @brief JSON键值对结构
-     * @details 支持多种值类型：
-     * - 基本类型：通过serializable_wrapper包装
-     * - 类成员指针：通过field_wrapper包装
-     * - 列表：std::vector或std::initializer_list包装的基本类型
-     * - 嵌套字典：std::vector<pair>或std::initializer_list<pair>
-     */
-    struct pair {
-        /**
-         * @brief 构造基本类型键值对
-         * @param key JSON键
-         * @param value 基本类型值
-         */
-        constexpr pair(const char* key, const helper::serializable_wrapper& value)
-                : _key{key}, _value{value} {}
-
-        /**
-         * @brief 构造基本类型键值对
-         * @tparam Key slow_json::static_string类型，兼容以前的接口
-         * @param key JSON键
-         * @param value 基本类型值
-         */
-        template<concepts::static_string Key>
-        constexpr pair(const Key&key, const helper::serializable_wrapper& value)
-                : _key{Key::with_end()}, _value{value} {}
-
-        /**
-         * @brief 构造列表类型键值对
-         * @param key JSON键
-         * @param value 已构建的vector列表
-         */
-        constexpr pair(const char* key, const std::vector<helper::serializable_wrapper>& value)
-                : _key{key}, _value{value} {}
-
-        /**
-         * @brief 构造列表类型键值对
-         * @tparam Key slow_json::static_string类型，兼容以前的接口
-         * @param key JSON键
-         * @param value 已构建的vector列表
-         */
-        template<concepts::static_string Key>
-        constexpr pair(const Key&key, const std::vector<helper::serializable_wrapper>& value)
-                : _key{Key::with_end()}, _value{value} {}
-
-        /**
-         * @brief 构造嵌套字典键值对
-         * @param key JSON键
-         * @param value 字典vector
-         */
-        pair(const char* key, const std::vector<pair>& value)
-                : _key{key}, _value{value} {}
-
-        /**
-         * @brief 构造嵌套字典键值对
-         * @tparam Key slow_json::static_string类型，兼容以前的接口
-         * @param key JSON键
-         * @param value 字典vector
-         */
-        template<concepts::static_string Key>
-        constexpr pair(const Key&key, const std::vector<pair>& value)
-                : _key{Key::with_end()}, _value{value} {}
-
-        /**
-         * @brief 构造类成员指针键值对
-         * @param key JSON键
-         * @param value 类成员指针包装器
-         */
-        constexpr pair(const char* key, const helper::field_wrapper& value)
-                : _key{key}, _value{value} {}
-
-        /**
-         * @brief 构造类成员指针键值对
-         * @tparam Key slow_json::static_string类型，兼容以前的接口
-         * @param key JSON键
-         * @param value 类成员指针包装器
-         */
-        template<concepts::static_string Key>
-        constexpr pair(const Key&key, const helper::field_wrapper& value)
-                : _key{Key::with_end()}, _value{value} {}
-
-        const char* _key; ///< JSON键字符串
-        using value_t = std::variant<  ///< 值类型的variant定义
-                helper::serializable_wrapper,   // 基本类型
-                helper::field_wrapper,          // 类成员指针
-                std::vector<helper::serializable_wrapper>,   // 显式列表
-                std::initializer_list<helper::serializable_wrapper>, // 初始化列表
-                std::vector<pair>,              // 显式嵌套字典
-                std::initializer_list<pair>     // 初始化列表嵌套字典
-        >;
-        value_t _value; ///< 存储的值
-
-        /**
-         * @brief 获取键值
-         * @return const char* 键字符串
-         */
-        const char* key() const noexcept { return this->_key; }
-
-        /**
-         * @brief 获取值引用
-         * @return const value_t& 值variant的常量引用
-         */
-        const value_t& value() const noexcept { return _value; }
-
-        /**
-         * @brief 类型安全的取值方法
-         * @tparam T 期望的类型
-         * @return const void* 类型指针或nullptr
-         */
-        template<typename T>
-        const void* get_if() const noexcept {
-            return std::get_if<T>(&this->_value);
-        }
-    };
-
     using list = std::initializer_list<helper::serializable_wrapper>; ///< JSON列表类型别名
-
 
     /**
      * @brief 动态字典类
@@ -299,7 +297,7 @@ namespace slow_json {
          */
         template<typename...K, typename...V>
         requires ((concepts::string<K> && !concepts::static_string<K>) && ...)
-        dict(const std::pair<K, V>&...args) : dict(std::vector<pair>{pair{args.first, args.second}...}) {}
+        dict(const std::pair<K, V>&...args) : dict(std::vector<helper::pair>{helper::pair{args.first, args.second}...}) {}
 
         /**
          * @brief 从std::vector<std::pair<static_string,V>>中构造
@@ -309,19 +307,19 @@ namespace slow_json {
          */
         template<typename ...K, typename...V>
         requires (concepts::static_string<K> && ...)
-        dict(const std::pair<K, V>&...args) : dict(std::vector<pair>{pair{K::with_end(), args.second}...}) {}
+        dict(const std::pair<K, V>&...args) : dict(std::vector<helper::pair>{helper::pair{K::with_end(), args.second}...}) {}
 
         /**
          * @brief 从pair vector构造
          * @param pairs 包含键值对的vector
          */
-        dict(const std::vector<pair>& pairs) : dict(pairs.data(), pairs.data() + pairs.size()) {}
+        dict(const std::vector<helper::pair>& pairs) : dict(pairs.data(), pairs.data() + pairs.size()) {}
 
         /**
          * @brief 从初始化列表构造
          * @param pairs 初始化列表形式的键值对
          */
-        dict(const std::initializer_list<pair>& pairs) : dict(pairs.begin(), pairs.end()) {}
+        dict(const std::initializer_list<helper::pair>& pairs) : dict(pairs.begin(), pairs.end()) {}
 
         /**
          * @brief 范围构造函数（核心实现）
@@ -329,7 +327,7 @@ namespace slow_json {
          * @param end pair数组结束指针
          * @details 遍历处理每个pair，根据值的实际类型进行存储
          */
-        dict(const pair* begin, const pair* end) : _object{new map_type()}, _type{value_type::ROOT_DICT} {
+        dict(const helper::pair* begin, const helper::pair* end) : _object{new map_type()}, _type{value_type::ROOT_DICT} {
             static_cast<map_type*>(_object)->reserve(end-begin);
             auto* map = static_cast<map_type*>(_object);
             for (; begin != end; ++begin) {
@@ -338,8 +336,8 @@ namespace slow_json {
 
                 using type1 = helper::serializable_wrapper;
                 using type2 = std::vector<helper::serializable_wrapper>;
-                using type3 = std::vector<pair>;
-                using type4 = std::initializer_list<pair>;
+                using type3 = std::vector<helper::pair>;
+                using type4 = std::initializer_list<helper::pair>;
                 using type5 = helper::field_wrapper;
 
                 if ((value_ptr = p.get_if<type1>()) != nullptr) {
