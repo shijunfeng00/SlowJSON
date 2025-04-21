@@ -105,6 +105,7 @@ namespace slow_json {
                 _type_name=slow_json::type_name_v<T>.str;
 
             }
+
             serializable_wrapper(serializable_wrapper&&other)noexcept
                     :_dump_fn(other._dump_fn),
                      _deleter(other._deleter),
@@ -146,7 +147,7 @@ namespace slow_json {
             void(*_dump_fn)(slow_json::Buffer&buffer,void*value);
             void(*_deleter)(void*);
             mutable void*_object;
-            std::string_view _type_name;
+            const char* _type_name;
         };
         /**
          * @brief JSON键值对结构
