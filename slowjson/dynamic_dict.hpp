@@ -5,8 +5,8 @@
 #ifndef SLOWJSON_DYNAMIC_DICT_HPP
 #define SLOWJSON_DYNAMIC_DICT_HPP
 
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
+#include "document.h"
+#include "writer.h"
 #include "concetps.hpp"
 #include "dump_to_string_interface.hpp"
 #include "enum.hpp"

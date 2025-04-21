@@ -307,7 +307,7 @@ namespace slow_json {
     template<>
     struct DumpToString<helper::serializable_wrapper>:public IDumpToString<DumpToString<helper::serializable_wrapper>>{
         static void dump_impl(Buffer&buffer,const helper::serializable_wrapper&object)noexcept{
-            assert_with_message(object._fn,"_fn为空，可能存在悬空引用问题");
+            assert_with_message(object._dump_fn,"_fn为空，可能存在悬空引用问题");
             object.dump_fn(buffer);
         }
     };

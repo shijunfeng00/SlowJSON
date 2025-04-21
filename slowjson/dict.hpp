@@ -12,7 +12,6 @@
 #include "load_from_dict_interface.hpp"
 #include "static_dict.hpp"
 #include "dynamic_dict.hpp"
-#include <functional>
 #include <vector>
 #include <variant>
 #include <memory>
@@ -38,22 +37,23 @@ namespace slow_json {
              */
             template<typename Class, typename Field>
             constexpr field_wrapper(Field Class::*field_ptr)
-            : _dump_fn([=](slow_json::Buffer& buffer, const void* object_ptr) {
+            : _dump_fn([](slow_json::Buffer& buffer, const void* object_ptr,std::size_t offset) {
                 // 将void指针转换为具体类指针
                 const auto& object = *(Class*)object_ptr;
                 // 获取成员引用（添加std::ref是为了处理原生数组的特殊情况）
-                const Field& field = std::ref(object.*field_ptr);
+                Field &field = std::ref(*(Field*)((std::uintptr_t)&object + offset));
                 // 调用类型特化的序列化方法
                 DumpToString<Field>::dump(buffer, field);
             }),
-            _load_fn([=](const void* object_ptr, const slow_json::dynamic_dict& dict) {
+            _load_fn([](const void* object_ptr,std::size_t offset,const slow_json::dynamic_dict& dict) {
                 // 转换指针并获取成员引用
                 auto &object = *(Class *) object_ptr;
-                Field &field = std::ref(object.*field_ptr);
+                Field &field = std::ref(*(Field*)((std::uintptr_t)&object + offset));
                 // 调用类型特化的反序列化方法
                 LoadFromDict<Field>::load(field, dict);
             }),
-            _object_ptr{nullptr} {}
+            _object_ptr{nullptr} ,
+            _offset{(std::size_t)(&((Class*)nullptr->*field_ptr))}{}
 
             /**
              * @brief 执行字段序列化
@@ -62,7 +62,7 @@ namespace slow_json {
              */
             void dump_fn(slow_json::Buffer& buffer) const {
                 assert_with_message(this->_object_ptr != nullptr, "this->_object_ptr为空");
-                this->_dump_fn(buffer, this->_object_ptr);
+                this->_dump_fn(buffer, this->_object_ptr,this->_offset);
             }
 
             /**
@@ -72,13 +72,14 @@ namespace slow_json {
              */
             void load_fn(const slow_json::dynamic_dict& dict) const {
                 assert_with_message(this->_object_ptr != nullptr, "this->_object_ptr为空");
-                this->_load_fn(this->_object_ptr, dict);
+                this->_load_fn(this->_object_ptr, this->_offset,dict);
             }
 
         private:
-            std::function<void(slow_json::Buffer&, const void*)> _dump_fn; ///< 序列化函数闭包
-            std::function<void(const void*, const slow_json::dynamic_dict&)> _load_fn; ///< 反序列化函数闭包
+            void(*_dump_fn)(slow_json::Buffer&, const void*,std::size_t) ; ///< 序列化函数
+            void(*_load_fn)(const void*, std::size_t,const slow_json::dynamic_dict&); ///< 反序列化函数
             const void* _object_ptr; ///< 绑定的对象指针
+            std::size_t _offset; ///< 绑定的对象对应的成员变量的指针和对象本身地址的之间偏移量
         };
 
         /**
@@ -87,32 +88,6 @@ namespace slow_json {
          */
         struct serializable_wrapper {
         public:
-            class ifunction{
-            public:
-                virtual void dump_fn(slow_json::Buffer&buffer)const=0;
-                [[nodiscard]] virtual const void*value()const noexcept=0;
-                [[nodiscard]] virtual void*value()noexcept=0;
-                [[nodiscard]] virtual std::string_view type_name()const noexcept=0;
-            };
-            template<typename T>
-            class function:public ifunction{
-            public:
-                explicit function(const T&value):_value{value}{}
-                void dump_fn(slow_json::Buffer&buffer)const override{
-                    DumpToString<T>::dump(buffer,_value);
-                }
-                [[nodiscard]] void*value()noexcept override{
-                    return &this->_value;
-                }
-                [[nodiscard]] const void*value()const noexcept override{
-                    return &this->_value;
-                }
-                [[nodiscard]] std::string_view type_name()const noexcept override{
-                    return slow_json::type_name_v<T>.str;
-                }
-            private:
-                T _value;
-            };
             /**
              * @brief 构造函数，绑定任意可序列化值
              * @tparam T 值类型，需满足可序列化要求且非成员指针
@@ -121,19 +96,57 @@ namespace slow_json {
              */
             template<typename T>
             requires(!std::is_member_pointer_v<T>)
-            constexpr serializable_wrapper(const T&value)
-            :_fn{new function<std::decay_t<decltype(value)>>{value}}{}
+            constexpr serializable_wrapper(const T&value){
+                _dump_fn=[](slow_json::Buffer&buffer,void*value){DumpToString<T>::dump(buffer,*static_cast<T*>(value));};
+                _deleter=[](void*object){
+                    delete static_cast<std::decay_t<decltype(value)>*>(object);
+                };
+                _object=new std::decay_t<decltype(value)>{value};
+                _type_name=slow_json::type_name_v<T>.str;
+
+            }
+            serializable_wrapper(serializable_wrapper&&other)noexcept
+                    :_dump_fn(other._dump_fn),
+                     _deleter(other._deleter),
+                     _object(other._object),
+                     _type_name(other._type_name){
+                other._object=nullptr;
+            }
+            /**
+             * @brief 拷贝构造函数，但是实际是模拟移动语义，将other中的_object指针设置为空了
+             * @details 这么做是因为std::variant的类型中包含std::vector,std::vector的初始化依赖std::initializer_list，
+             *          而std::initializer_list必须要存在复制构造函数，但是如果是复制的话会对析构函数造成问题，导致double free
+             *          如果采用引用计数会带来额外的消耗，考虑到这个场景下serializable_wrapper只是临时构建辅助dict实现简洁语法用的
+             *          并且最终只需要在dict的_value对应的pair的value中存储一份就可以，因此其实就应该是移动语义。
+             *          将复制构造函数变为移动构造函数的语义，这样是可以保证只有一份数据并且正确存储在对应的位置，
+             *          则不需要引用计数，并且析构函数也可以安全的执行对应的deleter
+             * @param other 源对象
+             */
+            serializable_wrapper(const serializable_wrapper&other)
+                    :_dump_fn(other._dump_fn),
+                     _deleter(other._deleter),
+                     _object(other._object),
+                     _type_name(other._type_name){
+                other._object=nullptr;
+            }
+            ~serializable_wrapper(){
+                _deleter(_object);
+            }
+
             void dump_fn(slow_json::Buffer&buffer) const{
-                this->_fn->dump_fn(buffer);
+                this->_dump_fn(buffer,_object);
             }
-            [[nodiscard]] void*value() const {
-                return this->_fn->value();
+            [[nodiscard]] void*value(){
+                return this->_object;
             }
-            [[nodiscard]] std::string_view type_name(){
-                return this->_fn->type_name();
+            [[nodiscard]] std::string_view type_name()const noexcept{
+                return this->_type_name;
             }
         private:
-            ifunction * _fn;
+            void(*_dump_fn)(slow_json::Buffer&buffer,void*value);
+            void(*_deleter)(void*);
+            mutable void*_object;
+            std::string_view _type_name;
         };
         /**
          * @brief JSON键值对结构
@@ -149,8 +162,9 @@ namespace slow_json {
              * @param key JSON键
              * @param value 基本类型值
              */
-            constexpr pair(const char* key, const helper::serializable_wrapper& value)
-                    : _key{key}, _value{value} {}
+             constexpr pair(const char* key, const helper::serializable_wrapper& value)
+                    : _key{key}, _value{value} {
+            }
 
             /**
              * @brief 构造基本类型键值对
@@ -280,7 +294,6 @@ namespace slow_json {
                 std::vector<helper::serializable_wrapper>, ///< 显式列表
                 std::unique_ptr<dict>                      ///< 嵌套字典
         >>;
-
     public:
         /**
          * @brief 默认构造函数，创建空的ROOT_DICT
@@ -321,48 +334,6 @@ namespace slow_json {
          */
         dict(const std::initializer_list<helper::pair>& pairs) : dict(pairs.begin(), pairs.end()) {}
 
-        /**
-         * @brief 范围构造函数（核心实现）
-         * @param begin pair数组起始指针
-         * @param end pair数组结束指针
-         * @details 遍历处理每个pair，根据值的实际类型进行存储
-         */
-        dict(const helper::pair* begin, const helper::pair* end) : _object{new map_type()}, _type{value_type::ROOT_DICT} {
-            static_cast<map_type*>(_object)->reserve(end-begin);
-            auto* map = static_cast<map_type*>(_object);
-            for (; begin != end; ++begin) {
-                const auto& p = *begin;
-                const void* value_ptr = nullptr;
-
-                using type1 = helper::serializable_wrapper;
-                using type2 = std::vector<helper::serializable_wrapper>;
-                using type3 = std::vector<helper::pair>;
-                using type4 = std::initializer_list<helper::pair>;
-                using type5 = helper::field_wrapper;
-
-                if ((value_ptr = p.get_if<type1>()) != nullptr) {
-                    map->emplace(p.key(), std::forward<type1>(*(type1*)value_ptr));
-                    continue;
-                }
-                if ((value_ptr = p.get_if<type2>()) != nullptr) {
-                    map->emplace(p.key(), std::forward<type2>(*(type2*)value_ptr));
-                    continue;
-                }
-                if ((value_ptr = p.get_if<type3>()) != nullptr) {
-                    map->emplace(p.key(), std::make_unique<dict>(*(type3*)value_ptr));
-                    continue;
-                }
-                if ((value_ptr = p.get_if<type4>()) != nullptr) {
-                    map->emplace(p.key(), std::make_unique<dict>(*(type4*)value_ptr));
-                    continue;
-                }
-                if ((value_ptr = p.get_if<type5>()) != nullptr) {
-                    map->emplace(p.key(), *(type5*)value_ptr);
-                    continue;
-                }
-                assert_with_message(value_ptr != nullptr, "序列化失败：未知的值类型");
-            }
-        }
 
         /**
          * @brief 析构函数
@@ -491,6 +462,48 @@ namespace slow_json {
         }
 
     private:
+        /**
+         * @brief 范围构造函数（核心实现）
+         * @param begin pair数组起始指针
+         * @param end pair数组结束指针
+         * @details 遍历处理每个pair，根据值的实际类型进行存储
+         */
+        dict(const helper::pair* begin, const helper::pair* end) : _object{new map_type()}, _type{value_type::ROOT_DICT} {
+            static_cast<map_type*>(_object)->reserve(end-begin);
+            auto* map = static_cast<map_type*>(_object);
+            for (; begin != end; ++begin) {
+                const auto& p = *begin;
+                const void* value_ptr = nullptr;
+
+                using type1 = helper::serializable_wrapper;
+                using type2 = std::vector<helper::serializable_wrapper>;
+                using type3 = std::vector<helper::pair>;
+                using type4 = std::initializer_list<helper::pair>;
+                using type5 = helper::field_wrapper;
+
+                if ((value_ptr = p.get_if<type1>()) != nullptr) {
+                    map->emplace(p.key(), std::forward<type1>(*(type1*)value_ptr));
+                    continue;
+                }
+                if ((value_ptr = p.get_if<type2>()) != nullptr) {
+                    map->emplace(p.key(), std::forward<type2>(*(type2*)value_ptr));
+                    continue;
+                }
+                if ((value_ptr = p.get_if<type3>()) != nullptr) {
+                    map->emplace(p.key(), std::make_unique<dict>(*(type3*)value_ptr));
+                    continue;
+                }
+                if ((value_ptr = p.get_if<type4>()) != nullptr) {
+                    map->emplace(p.key(), std::make_unique<dict>(*(type4*)value_ptr));
+                    continue;
+                }
+                if ((value_ptr = p.get_if<type5>()) != nullptr) {
+                    map->emplace(p.key(), *(type5*)value_ptr);
+                    continue;
+                }
+                assert_with_message(value_ptr != nullptr, "序列化失败：未知的值类型");
+            }
+        }
         /**
          * @brief 私有构造函数，用于创建非根dict对象
          * @param object 指向数据的指针

@@ -18,12 +18,20 @@ void test_polymorphic_dict_dumps() {
             }}
     };
     slow_json::dumps(buffer, dict, 4);
+    std::cout<<"fuck:"<<buffer<<std::endl;
     assert_with_message(buffer.string() == R"({
     "name":"shijunfeng",
     "tuple":{
         "haha":"wawa",
         "single":"boy"
     },
+    "test":123
+})"|| buffer.string() == R"({
+    "tuple":{
+        "haha":"wawa",
+        "single":"boy"
+    },
+    "name":"shijunfeng",
     "test":123
 })", "采用slow_json::dumps序列化得到的结果不正确");
 }

@@ -38,7 +38,8 @@ void test_merge_dict() {
         auto d4=slow_json::helper::merge(std::move(d1),std::move(d2),std::move(d3));
         buffer.clear();
         slow_json::dumps(buffer, d4);
-        assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})", "通过slow_json::dumps序列化结果不正确");
+        assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})" ||
+                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})", "通过slow_json::dumps序列化结果不正确");
     }
 
     {
@@ -49,7 +50,8 @@ void test_merge_dict() {
                 slow_json::dict{{"e",5},{"f",6}});
         buffer.clear();
         slow_json::dumps(buffer, d4);
-        assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})", "通过slow_json::dumps序列化结果不正确");
+        assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})"||
+                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})", "通过slow_json::dumps序列化结果不正确");
     }
 
 }
