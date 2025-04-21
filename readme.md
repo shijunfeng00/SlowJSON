@@ -11,7 +11,7 @@
 
 ## 为什么选择 SlowJSON？
 
-- **简洁的使用接口**：通过 `dumps`、`loads`、`static_dict`等接口轻松构建和解析JSON。
+- **简洁的使用接口**：通过 `dumps`、`loads`、`dict`、`static_dict`等接口轻松构建和解析JSON。
 - **强大的泛型支持**：基于模板元编程，支持基本类型、STL 容器及其任意组合。
 - **用户自定义类支持**：通过侵入式宏或非侵入式特化，快速实现自定义类的序列化和反序列化。
 - **不算差的性能**:虽然该库名称为`SlowJSON`，但该库基于`RapidJSON`来实现序列化与反序列化，通过模板尽可能降低运行开销，性能并不会真的很差。
@@ -23,22 +23,81 @@
 
 ## 快速开始
 
-### 使用 `static_dict` 和`dumps`构建 JSON
+### 使用 `dict` 和 `dumps` 构建 JSON
 
-借助模板元编程，可直接使用`STL`对象来定义`JSON`，像`Python`的字典一样简洁高效。
+使用`slow_json::dict`，可以像python的字典那样快速且轻松的构建JSON，并且可以和C++的`STL`、`std::pair`、`std::optional`等组件组合使用
 
 ```cpp
 #include "slowjson.hpp"
 #include <iostream>
-slow_json::Buffer buffer(1000);
-slow_json::static_dict dict{
-        std::pair{"name", "SlowJSON"},
-        std::pair{"version", 1.0},
-        std::pair{"features", std::vector<std::string>{"easy", "generic"}},
-        std::pair{"others",std::tuple{"age",19}}
-};
-slow_json::dumps(buffer, dict, 4);
-std::cout << buffer << std::endl;
+int main() {
+    slow_json::Buffer buffer(1000);
+    slow_json::dict dict{
+            {"name", "SlowJSON"},
+            {"version", 1.0},
+            {"features", std::vector<std::string>{"easy", "generic"}},
+            {"others", std::tuple{"age", 19}},
+            {"nested_dict",{
+                {"a",1},
+                {"b",2},
+                {"c",{1,2,3,4,5,6}},
+                {"d",nullptr}
+            }}
+    };
+    slow_json::dumps(buffer, dict, 4);
+    std::cout << buffer << std::endl;
+}
+```
+
+代码运行结果如下
+
+```json
+{
+    "nested_dict":{
+        "d":null,
+        "c":[
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+        ],
+        "b":2,
+        "a":1
+    },
+    "version":1.0,
+    "others":[
+        "age",
+        19
+    ],
+    "features":[
+        "easy",
+        "generic"
+    ],
+    "name":"SlowJSON"
+}
+```
+### 使用 `static_dict` 和`dumps`构建 JSON
+
+* 如果完全确定JSON的结构的情况下，相比于`slow_json::dict`来说，`slow_json::static_dict`充分借助了模板元编程来在稍微牺牲易用性的情况下大幅提高了性能。
+
+* 同样如`slow_json::dict`，`slow_json::static_dict`也可直接使用`STL`对象来定义`JSON`，同样可以像`Python`的字典一样简洁高效。
+
+```cpp
+#include "slowjson.hpp"
+#include <iostream>
+int main() {
+    slow_json::Buffer buffer(1000);
+    slow_json::static_dict dict{
+            std::pair{"name", "SlowJSON"},
+            std::pair{"version", 1.0},
+            std::pair{"features", std::vector<std::string>{"easy", "generic"}},
+            std::pair{"others", std::tuple{"age", 19}}
+    };
+    slow_json::dumps(buffer, dict, 4);
+    std::cout << buffer << std::endl;
+}
 ```
 
 **输出：**
