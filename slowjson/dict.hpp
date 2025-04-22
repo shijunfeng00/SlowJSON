@@ -36,7 +36,7 @@ namespace slow_json {
              * @details 通过lambda捕获成员指针，生成序列化和反序列化的闭包
              */
             template<typename Class, typename Field>
-            constexpr field_wrapper(Field Class::*field_ptr)
+            constexpr field_wrapper(Field Class::*field_ptr) // NOLINT(google-explicit-constructor)
             : _dump_fn([](slow_json::Buffer& buffer, const void* object_ptr,std::size_t offset) {
                 // 将void指针转换为具体类指针
                 const auto& object = *(Class*)object_ptr;
@@ -84,7 +84,7 @@ namespace slow_json {
 
         /**
          * @brief 可序列化值包装器
-         * @details 封装任意可序列化值，提供统一的dump接口
+         * @details 封装任意可序列化值，提供统一的dump接口，优化小对象存储以减少堆分配
          */
         struct serializable_wrapper {
         public:
@@ -92,62 +92,179 @@ namespace slow_json {
              * @brief 构造函数，绑定任意可序列化值
              * @tparam T 值类型，需满足可序列化要求且非成员指针
              * @param value 要包装的值
-             * @details 通过lambda捕获值副本，生成序列化闭包
+             * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
              */
             template<typename T>
             requires(!std::is_member_pointer_v<T>)
-            constexpr serializable_wrapper(const T&value){
-                _dump_fn=[](slow_json::Buffer&buffer,void*value){DumpToString<T>::dump(buffer,*static_cast<T*>(value));};
-                _deleter=[](void*object){
-                    delete static_cast<std::decay_t<decltype(value)>*>(object);
+            constexpr serializable_wrapper(const T& value) { // NOLINT(google-explicit-constructor)
+                using U = std::decay_t<decltype(value)>;
+                constexpr std::size_t align_size = alignof(U);
+                if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
+                    // 小对象优化：在缓冲区内构造对象
+                    new (&_buffer) U(value);
+                    _is_heap_allocated = false;
+                } else {
+                    // 大对象：在堆上分配内存
+                    _buffer_ptr = new U(value);
+                    _is_heap_allocated = true;
+                }
+                _dump_fn = [](slow_json::Buffer& buffer, void* object) {
+                    DumpToString<U>::dump(buffer, *static_cast<U*>(object));
                 };
-                _object=new std::decay_t<decltype(value)>{value};
-                _type_name=slow_json::type_name_v<T>.str;
-
+                _move_fn = [](void* dest, void* src) {
+                    if constexpr(std::is_trivially_copyable_v<U>){
+                        std::memcpy(dest, src, sizeof(_buffer));
+                    } else if constexpr (std::is_move_constructible_v<U>) {
+                        new (dest) U(std::move(*static_cast<U*>(src)));
+                    } else if constexpr(std::is_copy_constructible_v<U>){
+                        new (dest) U(*static_cast<U*>(src));
+                    } else {
+                        assert_with_message(false, "类型既不能复制构造也不能移动构造:%s",slow_json::type_name_v<U>.str);
+                    }
+                };
+                _deleter = [](void* object, bool is_heap_allocated) {
+                    if (is_heap_allocated) {
+                        delete static_cast<U*>(object);
+                    } else {
+                        static_cast<U*>(object)->~U();
+                    }
+                };
+                _type_name = slow_json::type_name_v<U>.str;
             }
 
-            serializable_wrapper(serializable_wrapper&&other)noexcept
-                    :_dump_fn(other._dump_fn),
-                     _deleter(other._deleter),
-                     _object(other._object),
-                     _type_name(other._type_name){
-                other._object=nullptr;
-            }
             /**
-             * @brief 拷贝构造函数，但是实际是模拟移动语义，将other中的_object指针设置为空了
-             * @details 这么做是因为std::variant的类型中包含std::vector,std::vector的初始化依赖std::initializer_list，
-             *          而std::initializer_list必须要存在复制构造函数，但是如果是复制的话会对析构函数造成问题，导致double free
-             *          如果采用引用计数会带来额外的消耗，考虑到这个场景下serializable_wrapper只是临时构建辅助dict实现简洁语法用的
-             *          并且最终只需要在dict的_value对应的pair的value中存储一份就可以，因此其实就应该是移动语义。
-             *          将复制构造函数变为移动构造函数的语义，这样是可以保证只有一份数据并且正确存储在对应的位置，
-             *          则不需要引用计数，并且析构函数也可以安全的执行对应的deleter
-             * @param other 源对象
+             * @brief 构造函数，绑定任意可序列化值
+             * @tparam T 值类型，需满足可序列化要求且非成员指针
+             * @param value 要包装的值
+             * @details 通过lambda捕获值副本，生成序列化闭包。小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
              */
-            serializable_wrapper(const serializable_wrapper&other)
-                    :_dump_fn(other._dump_fn),
-                     _deleter(other._deleter),
-                     _object(other._object),
-                     _type_name(other._type_name){
-                other._object=nullptr;
-            }
-            ~serializable_wrapper(){
-                _deleter(_object);
+            template<typename T>
+            requires((!std::is_member_pointer_v<T>) && std::is_rvalue_reference_v<T&&>)
+            constexpr serializable_wrapper(T&& value) { // NOLINT(google-explicit-constructor)
+                using U = std::decay_t<decltype(value)>;
+                constexpr std::size_t align_size = alignof(U);
+                if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
+                    // 小对象优化：在缓冲区内构造对象
+                    new (&_buffer) U(std::forward<U>(value));
+                    _is_heap_allocated = false;
+                } else {
+                    // 大对象：在堆上分配内存
+                    _buffer_ptr = new U(std::forward<U>(value));
+                    _is_heap_allocated = true;
+                }
+                _dump_fn = [](slow_json::Buffer& buffer, void* object) {
+                    DumpToString<U>::dump(buffer, *static_cast<U*>(object));
+                };
+                _move_fn = [](void* dest, void* src) {
+                    if constexpr (std::is_move_constructible_v<U>) {
+                        new (dest) U(std::move(*static_cast<U*>(src)));
+                    } else if constexpr(std::is_copy_constructible_v<U>){
+                        new (dest) U(*static_cast<U*>(src));
+                    } else {
+                        assert_with_message(false, "类型既不能复制构造也不能移动构造:%s",slow_json::type_name_v<U>.str);
+                    }
+                };
+                _deleter = [](void* object, bool is_heap_allocated) {
+                    if (is_heap_allocated) {
+                        delete static_cast<U*>(object);
+                    } else {
+                        static_cast<U*>(object)->~U();
+                    }
+                };
+                _type_name = slow_json::type_name_v<U>.str;
             }
 
-            void dump_fn(slow_json::Buffer&buffer) const{
-                this->_dump_fn(buffer,_object);
+            /**
+             * @brief 移动构造函数
+             * @param other 源对象
+             * @details 转移大对象指针或复制小对象缓冲区内容
+             */
+            serializable_wrapper(serializable_wrapper&& other) noexcept
+                    : _dump_fn(other._dump_fn),
+                      _deleter(other._deleter),
+                      _move_fn(other._move_fn),
+                      _is_heap_allocated(other._is_heap_allocated),
+                      _type_name(other._type_name) {
+                if (_is_heap_allocated) {
+                    // 大对象：直接移动指针
+                    _buffer_ptr = other._buffer_ptr;
+                    other._buffer_ptr = nullptr;
+                } else {
+                    // 小对象：移动或者复制构造
+                    other._move_fn(&_buffer, const_cast<void*>(static_cast<const void*>(&other._buffer)));
+                }
             }
-            [[nodiscard]] void*value(){
-                return this->_object;
+
+            /**
+             * @brief 拷贝构造函数，模拟移动语义
+             * @param other 源对象
+             * @details 为避免std::variant中std::vector的初始化问题，拷贝构造模拟移动语义。大对象转移指针并置空源指针以防double free，小对象复制缓冲区
+             */
+            serializable_wrapper(const serializable_wrapper& other)
+                    : _dump_fn(other._dump_fn),
+                      _deleter(other._deleter),
+                      _move_fn(other._move_fn),
+                      _is_heap_allocated(other._is_heap_allocated),
+                      _type_name(other._type_name) {
+                if (_is_heap_allocated) {
+                    // 大对象：移动指针（模拟移动语义）
+                    _buffer_ptr = other._buffer_ptr;
+                    other._buffer_ptr = nullptr; // 防止double free
+                } else {
+                    // 小对象：复制缓冲区内容
+                    other._move_fn(&_buffer, const_cast<void*>(static_cast<const void*>(&other._buffer)));
+                }
             }
-            [[nodiscard]] std::string_view type_name()const noexcept{
+
+            /**
+             * @brief 析构函数
+             * @details 根据_is_heap_allocated决定释放堆内存或调用小对象的析构函数
+             */
+            ~serializable_wrapper() {
+                if (_is_heap_allocated && _buffer_ptr) {
+                    _deleter(_buffer_ptr, true);
+                } else {
+                    _deleter(&_buffer, false);
+                }
+            }
+
+            /**
+             * @brief 执行序列化
+             * @param buffer 输出缓冲区
+             * @details 调用存储的序列化函数，处理小对象或大对象
+             */
+            void dump_fn(slow_json::Buffer& buffer) const {
+                void* ptr = _is_heap_allocated ? _buffer_ptr : (void*)&_buffer;
+                this->_dump_fn(buffer, ptr);
+            }
+
+            /**
+             * @brief 获取值的指针
+             * @return void* 指向值的指针
+             */
+            [[nodiscard]] void* value() {
+                return _is_heap_allocated ? _buffer_ptr : (void*)&_buffer;
+            }
+
+            /**
+             * @brief 获取值的类型名称
+             * @return std::string_view 类型名称
+             */
+            [[nodiscard]] std::string_view type_name() const noexcept {
                 return this->_type_name;
             }
+
         private:
-            void(*_dump_fn)(slow_json::Buffer&buffer,void*value);
-            void(*_deleter)(void*);
-            mutable void*_object;
-            const char* _type_name;
+            static constexpr std::size_t buffer_size = 24;
+            union {
+                mutable void* _buffer_ptr; ///< 用于大对象，指向堆内存
+                alignas(8) char _buffer[buffer_size]; ///< 用于小对象优化
+            }; ///< 联合体存储小对象缓冲区或大对象指针
+            void (*_dump_fn)(slow_json::Buffer& buffer, void* value); ///< 序列化函数指针
+            void (*_deleter)(void*, bool); ///< 析构函数指针，带分配标志
+            void (*_move_fn)(void* dest, void* src); ///< 移动函数指针
+            bool _is_heap_allocated; ///< 标记是否为堆分配
+            const char* _type_name; ///< 类型名称
         };
         /**
          * @brief JSON键值对结构
@@ -246,13 +363,19 @@ namespace slow_json {
              * @brief 获取键值
              * @return const char* 键字符串
              */
-            const char* key() const noexcept { return this->_key; }
+            [[nodiscard]] const char* key() const noexcept { return this->_key; }
 
             /**
              * @brief 获取值引用
              * @return const value_t& 值variant的常量引用
              */
-            const value_t& value() const noexcept { return _value; }
+            [[nodiscard]] const value_t& value() const noexcept { return _value; }
+
+            /**
+             * @brief 获取值引用
+             * @return const value_t& 值variant的常量引用
+             */
+            [[nodiscard]]  value_t& value() noexcept { return _value; }
 
             /**
              * @brief 类型安全的取值方法
@@ -260,7 +383,17 @@ namespace slow_json {
              * @return const void* 类型指针或nullptr
              */
             template<typename T>
-            const void* get_if() const noexcept {
+            [[nodiscard]] const void* get_if() const noexcept {
+                return std::get_if<T>(&this->_value);
+            }
+
+            /**
+             * @brief 类型安全的取值方法
+             * @tparam T 期望的类型
+             * @return const void* 类型指针或nullptr
+             */
+            template<typename T>
+            [[nodiscard]] void* get_if() noexcept {
                 return std::get_if<T>(&this->_value);
             }
         };
@@ -284,7 +417,6 @@ namespace slow_json {
             DICT,          ///< 嵌套字典
             ROOT_DICT      ///< 根字典
         };
-
     private:
         void* _object;     ///< 指向实际数据的指针
         value_type _type;  ///< 数据类型
