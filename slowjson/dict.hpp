@@ -37,7 +37,7 @@ namespace slow_json {
              */
             template<typename Class, typename Field>
             constexpr field_wrapper(Field Class::*field_ptr) // NOLINT(google-explicit-constructor)
-            : _dump_fn([](slow_json::Buffer& buffer, const void* object_ptr,std::size_t offset) {
+                    : _dump_fn([](slow_json::Buffer& buffer, const void* object_ptr,std::size_t offset) {
                 // 将void指针转换为具体类指针
                 const auto& object = *(Class*)object_ptr;
                 // 获取成员引用（添加std::ref是为了处理原生数组的特殊情况）
@@ -45,15 +45,15 @@ namespace slow_json {
                 // 调用类型特化的序列化方法
                 DumpToString<Field>::dump(buffer, field);
             }),
-            _load_fn([](const void* object_ptr,std::size_t offset,const slow_json::dynamic_dict& dict) {
-                // 转换指针并获取成员引用
-                auto &object = *(Class *) object_ptr;
-                Field &field = std::ref(*(Field*)((std::uintptr_t)&object + offset));
-                // 调用类型特化的反序列化方法
-                LoadFromDict<Field>::load(field, dict);
-            }),
-            _object_ptr{nullptr} ,
-            _offset{(std::size_t)(&((Class*)nullptr->*field_ptr))}{}
+                      _load_fn([](const void* object_ptr,std::size_t offset,const slow_json::dynamic_dict& dict) {
+                          // 转换指针并获取成员引用
+                          auto &object = *(Class *) object_ptr;
+                          Field &field = std::ref(*(Field*)((std::uintptr_t)&object + offset));
+                          // 调用类型特化的反序列化方法
+                          LoadFromDict<Field>::load(field, dict);
+                      }),
+                      _object_ptr{nullptr} ,
+                      _offset{(std::size_t)(&((Class*)nullptr->*field_ptr))}{}
 
             /**
              * @brief 执行字段序列化
@@ -205,7 +205,7 @@ namespace slow_json {
                       _deleter(other._deleter),
                       _move_fn(other._move_fn),
                       _type_name(other._type_name) {
-                set_heap_allocated(other.is_heap_allocated()); 
+                set_heap_allocated(other.is_heap_allocated());
                 if (is_heap_allocated()) {
                     // 大对象：移动指针（模拟移动语义）
                     _buffer_ptr = other._buffer_ptr;
@@ -302,7 +302,7 @@ namespace slow_json {
              * @param key JSON键
              * @param value 基本类型值
              */
-             constexpr pair(const char* key, const helper::serializable_wrapper& value)
+            constexpr pair(const char* key, const helper::serializable_wrapper& value)
                     : _key{key}, _value{value} {
             }
 
@@ -432,6 +432,8 @@ namespace slow_json {
      * @note 性能略低于static_dict，适合需要动态构建的场景
      */
     struct dict {
+        friend struct LoadFromDict<dict>;
+        friend struct DumpToString<dict>;
         enum class value_type {
             UNKNOWN,       ///< 未知类型，用于错误处理
             ELEMENT,       ///< 基本类型
@@ -440,23 +442,38 @@ namespace slow_json {
             ROOT_DICT      ///< 根字典
         };
     private:
-        void* _object;     ///< 指向实际数据的指针
+
+        union{
+            alignas(8) char _buffer[56];//ROOT_DICT，栈对象，placement new
+            void*_object_ptr; //非ROOT_DICT，指向map中value的指针，但不会new和copy新数据
+        };
         value_type _type;  ///< 数据类型
-        // ROOT_DICT使用的存储结构
+
         using map_type = std::unordered_map<const char*, std::variant<
                 helper::serializable_wrapper,              ///< 基本类型元素
                 helper::field_wrapper,                     ///< 类成员指针
                 std::vector<helper::serializable_wrapper>, ///< 显式列表
                 std::unique_ptr<dict>                      ///< 嵌套字典
         >>;
+        [[nodiscard]] void*object()const noexcept{
+            if(_type==value_type::ROOT_DICT){
+                return (void*)&_buffer;
+            }else{
+                return _object_ptr;
+            }
+        }
     public:
+
         /**
          * @brief 默认构造函数，创建空的ROOT_DICT
          */
-        dict() : _object{new map_type()}, _type{value_type::ROOT_DICT} {
-            static_cast<map_type*>(_object)->reserve(16);
-        }
+        dict() : _type{value_type::ROOT_DICT} {
+            new(&_buffer)map_type{};
+            reinterpret_cast<map_type*>(&_buffer)->reserve(16); //栈对象避免动态分配，预分配空间，也是避免动态分配
 
+        }
+        dict(const dict&)=delete;
+        dict(dict&&)=default;
         /**
          * @brief 从std::vector<std::pair<const char*,V>>中构造
          * @tparam K 键类型
@@ -496,7 +513,7 @@ namespace slow_json {
          */
         ~dict() {
             if (_type == value_type::ROOT_DICT) {
-                delete static_cast<map_type*>(_object);
+                reinterpret_cast<map_type*>(_buffer)->~map_type();
             }
         }
 
@@ -532,9 +549,9 @@ namespace slow_json {
         bool contains(const char* key) const {
             assert_with_message(is_dict(), "试图将非字典类型作为字典进行访问");
             if (_type == value_type::ROOT_DICT) {
-                return static_cast<map_type*>(_object)->contains(key);
+                return reinterpret_cast<const map_type*>(&_buffer)->contains(key);
             } else { // DICT
-                return static_cast<dict*>(_object)->contains(key);
+                return static_cast<dict*>(_object_ptr)->contains(key);
             }
         }
 
@@ -544,7 +561,7 @@ namespace slow_json {
          */
         std::size_t size() const {
             assert_with_message(is_array(), "试图将非数组类型作为数组进行访问");
-            return static_cast<std::vector<helper::serializable_wrapper>*>(_object)->size();
+            return static_cast<std::vector<helper::serializable_wrapper>*>(_object_ptr)->size();
         }
 
         /**
@@ -555,11 +572,11 @@ namespace slow_json {
             assert_with_message(is_dict(), "试图将非字典类型作为字典进行访问");
             std::vector<const char*> result;
             if (_type == value_type::ROOT_DICT) {
-                for (const auto& it : *static_cast<map_type*>(_object)) {
+                for (const auto& it : *reinterpret_cast<const map_type*>(&_buffer)) {
                     result.emplace_back(it.first);
                 }
             } else { // DICT
-                result = static_cast<dict*>(_object)->keys();
+                result = static_cast<dict*>(_object_ptr)->keys();
             }
             return result;
         }
@@ -575,9 +592,9 @@ namespace slow_json {
             assert_with_message(is_dict(), "试图将非字典类型作为字典进行访问");
             map_type* map;
             if (_type == value_type::ROOT_DICT) {
-                map = static_cast<map_type*>(_object);
+                map = reinterpret_cast<map_type*>(&_buffer);
             } else { // DICT
-                map = static_cast<map_type*>(static_cast<dict*>(_object)->_object);
+                map = reinterpret_cast<map_type*>(static_cast<dict*>(_object_ptr)->object());
             }
             assert_with_message(map->contains(key), "试图访问不存在的字段:%s", key);
             auto& var = map->at(key);
@@ -600,7 +617,7 @@ namespace slow_json {
          */
         dict operator[](std::size_t index) {
             assert_with_message(is_array(), "试图将非数组类型作为数组进行访问");
-            auto* vec = static_cast<std::vector<helper::serializable_wrapper>*>(_object);
+            auto* vec = static_cast<std::vector<helper::serializable_wrapper>*>(_object_ptr);
             assert_with_message(index < vec->size(), "数组越界，下标%d大于数组长度%d", index, vec->size());
             return dict{(*vec)[index].value(), value_type::ELEMENT};
         }
@@ -613,7 +630,7 @@ namespace slow_json {
         template<typename T>
         T& cast() {
             assert_with_message(is_element(), "试图将非基本类型进行cast");
-            return *static_cast<T*>(_object);
+            return *static_cast<T*>(_object_ptr);
         }
 
     private:
@@ -623,9 +640,10 @@ namespace slow_json {
          * @param end pair数组结束指针
          * @details 遍历处理每个pair，根据值的实际类型进行存储
          */
-        dict(const helper::pair* begin, const helper::pair* end) : _object{new map_type()}, _type{value_type::ROOT_DICT} {
-            static_cast<map_type*>(_object)->reserve(end-begin);
-            auto* map = static_cast<map_type*>(_object);
+        dict(const helper::pair* begin, const helper::pair* end) :_type{value_type::ROOT_DICT} {
+            new(&_buffer)map_type{};
+            reinterpret_cast<map_type*>(&_buffer)->reserve(end-begin);
+            auto* map = reinterpret_cast<map_type*>(&_buffer);
             for (; begin != end; ++begin) {
                 const auto& p = *begin;
                 const void* value_ptr = nullptr;
@@ -660,11 +678,13 @@ namespace slow_json {
             }
         }
         /**
-         * @brief 私有构造函数，用于创建非根dict对象
+         * @brief 私有构造函数，用于创建非根dict对象，type一定不会是ROOT_DICT
          * @param object 指向数据的指针
          * @param type 数据类型
          */
-        dict(void* object, value_type type) : _object{object}, _type{1} {}
+        dict(void* object, value_type type) : _object_ptr{object}, _type{type} {
+            assert_with_message(type!=value_type::ROOT_DICT,"type不能为ROOT_DICT");
+        }
     };
 }
 

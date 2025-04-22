@@ -123,7 +123,7 @@ namespace slow_json {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
-                for(const auto&[k,v]:*static_cast<dict::map_type*>(config._object)){
+                for(const auto&[k,v]:*static_cast<dict::map_type*>(config.object())){
                     const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
                     if(value_ptr!=nullptr){
                         // 目前只考虑在get_config中用于自定义class对象的反序列化
