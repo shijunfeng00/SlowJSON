@@ -99,14 +99,15 @@ namespace slow_json {
             constexpr serializable_wrapper(const T& value) { // NOLINT(google-explicit-constructor)
                 using U = std::decay_t<decltype(value)>;
                 constexpr std::size_t align_size = alignof(U);
+                _type_name = slow_json::type_name_v<U>.str;
                 if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
                     // 小对象优化：在缓冲区内构造对象
                     new (&_buffer) U(value);
-                    _is_heap_allocated = false;
+                    set_heap_allocated(false);
                 } else {
                     // 大对象：在堆上分配内存
                     _buffer_ptr = new U(value);
-                    _is_heap_allocated = true;
+                    set_heap_allocated(true);
                 }
                 _dump_fn = [](slow_json::Buffer& buffer, void* object) {
                     DumpToString<U>::dump(buffer, *static_cast<U*>(object));
@@ -129,7 +130,6 @@ namespace slow_json {
                         static_cast<U*>(object)->~U();
                     }
                 };
-                _type_name = slow_json::type_name_v<U>.str;
             }
 
             /**
@@ -143,14 +143,15 @@ namespace slow_json {
             constexpr serializable_wrapper(T&& value) { // NOLINT(google-explicit-constructor)
                 using U = std::decay_t<decltype(value)>;
                 constexpr std::size_t align_size = alignof(U);
+                _type_name = slow_json::type_name_v<U>.str;
                 if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
                     // 小对象优化：在缓冲区内构造对象
                     new (&_buffer) U(std::forward<U>(value));
-                    _is_heap_allocated = false;
+                    set_heap_allocated(false);
                 } else {
                     // 大对象：在堆上分配内存
                     _buffer_ptr = new U(std::forward<U>(value));
-                    _is_heap_allocated = true;
+                    set_heap_allocated(true);
                 }
                 _dump_fn = [](slow_json::Buffer& buffer, void* object) {
                     DumpToString<U>::dump(buffer, *static_cast<U*>(object));
@@ -171,7 +172,6 @@ namespace slow_json {
                         static_cast<U*>(object)->~U();
                     }
                 };
-                _type_name = slow_json::type_name_v<U>.str;
             }
 
             /**
@@ -183,9 +183,9 @@ namespace slow_json {
                     : _dump_fn(other._dump_fn),
                       _deleter(other._deleter),
                       _move_fn(other._move_fn),
-                      _is_heap_allocated(other._is_heap_allocated),
                       _type_name(other._type_name) {
-                if (_is_heap_allocated) {
+                set_heap_allocated(other.is_heap_allocated());
+                if (is_heap_allocated()) {
                     // 大对象：直接移动指针
                     _buffer_ptr = other._buffer_ptr;
                     other._buffer_ptr = nullptr;
@@ -204,9 +204,9 @@ namespace slow_json {
                     : _dump_fn(other._dump_fn),
                       _deleter(other._deleter),
                       _move_fn(other._move_fn),
-                      _is_heap_allocated(other._is_heap_allocated),
                       _type_name(other._type_name) {
-                if (_is_heap_allocated) {
+                set_heap_allocated(other.is_heap_allocated()); 
+                if (is_heap_allocated()) {
                     // 大对象：移动指针（模拟移动语义）
                     _buffer_ptr = other._buffer_ptr;
                     other._buffer_ptr = nullptr; // 防止double free
@@ -221,7 +221,7 @@ namespace slow_json {
              * @details 根据_is_heap_allocated决定释放堆内存或调用小对象的析构函数
              */
             ~serializable_wrapper() {
-                if (_is_heap_allocated && _buffer_ptr) {
+                if (is_heap_allocated() && _buffer_ptr) {
                     _deleter(_buffer_ptr, true);
                 } else {
                     _deleter(&_buffer, false);
@@ -234,7 +234,7 @@ namespace slow_json {
              * @details 调用存储的序列化函数，处理小对象或大对象
              */
             void dump_fn(slow_json::Buffer& buffer) const {
-                void* ptr = _is_heap_allocated ? _buffer_ptr : (void*)&_buffer;
+                void* ptr = is_heap_allocated() ? _buffer_ptr : (void*)&_buffer;
                 this->_dump_fn(buffer, ptr);
             }
 
@@ -243,18 +243,41 @@ namespace slow_json {
              * @return void* 指向值的指针
              */
             [[nodiscard]] void* value() {
-                return _is_heap_allocated ? _buffer_ptr : (void*)&_buffer;
+                return is_heap_allocated() ? _buffer_ptr : (void*)&_buffer;
             }
 
             /**
              * @brief 获取值的类型名称
-             * @return std::string_view 类型名称
+             * @return std::string_view 类型名称，去除标志位后的原始字符串
              */
             [[nodiscard]] std::string_view type_name() const noexcept {
-                return this->_type_name;
+                uintptr_t ptr = reinterpret_cast<uintptr_t>(_type_name);
+                ptr &= ~static_cast<uintptr_t>(1); // 清除最低位
+                return {reinterpret_cast<const char*>(ptr)};
             }
-
         private:
+            /**
+             * @brief 设置堆分配标志位
+             * @param value 是否为堆分配（true 表示堆分配，false 表示内嵌）
+             * @details 修改 _type_name 指针的最低位，设置标志位而不影响原始地址。
+             */
+            void set_heap_allocated(bool value)const noexcept {
+                auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+                if (value) {
+                    ptr |= 1; // 设置最低位为 1
+                } else {
+                    ptr &= ~static_cast<uintptr_t>(1); // 清除最低位
+                }
+                _type_name = reinterpret_cast<char*>(ptr);
+            }
+            /**
+             * 获得堆分配标志位
+             * @return 堆分配标志位
+             */
+            bool is_heap_allocated()const noexcept{
+                auto ptr=reinterpret_cast<uintptr_t>(_type_name);
+                return ptr&1;
+            }
             static constexpr std::size_t buffer_size = 24;
             union {
                 mutable void* _buffer_ptr; ///< 用于大对象，指向堆内存
@@ -263,8 +286,7 @@ namespace slow_json {
             void (*_dump_fn)(slow_json::Buffer& buffer, void* value); ///< 序列化函数指针
             void (*_deleter)(void*, bool); ///< 析构函数指针，带分配标志
             void (*_move_fn)(void* dest, void* src); ///< 移动函数指针
-            bool _is_heap_allocated; ///< 标记是否为堆分配
-            const char* _type_name; ///< 类型名称
+            mutable const char* _type_name; ///< 类型名称
         };
         /**
          * @brief JSON键值对结构
@@ -642,7 +664,7 @@ namespace slow_json {
          * @param object 指向数据的指针
          * @param type 数据类型
          */
-        dict(void* object, value_type type) : _object{object}, _type{type} {}
+        dict(void* object, value_type type) : _object{object}, _type{1} {}
     };
 }
 
