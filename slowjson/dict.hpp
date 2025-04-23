@@ -407,7 +407,11 @@ namespace slow_json {
 
     } // namespace helper
 
-    using list = std::initializer_list<helper::serializable_wrapper>; ///< JSON列表类型别名
+    //using list = std::initializer_list<helper::serializable_wrapper>; ///<
+    struct list:public std::initializer_list<helper::serializable_wrapper>{
+      using super_t=std::initializer_list<helper::serializable_wrapper>;
+      list(super_t&&object):super_t(object){}
+    };
 
 /**
  * @brief 动态字典类
@@ -474,7 +478,20 @@ namespace slow_json {
 
         dict(const dict &) = delete;
 
-        dict(dict &&) = default;
+        dict(dict&& other) noexcept : _type(other._type) {
+            if (_type == value_type::ROOT_DICT) {
+                // 移动 map_type 到 _buffer
+                new(&_buffer) map_type(std::move(*reinterpret_cast<map_type*>(&other._buffer)));
+                // 销毁 other 的 map_type，避免 double free
+                reinterpret_cast<map_type*>(&other._buffer)->~map_type();
+            } else {
+                // 移动指针类型，转移所有权
+                _object_ptr = other._object_ptr;
+                other._object_ptr = nullptr;
+            }
+            // 将源对象的 _type 设置为 UNKNOWN，表示已移动
+            other._type = value_type::UNKNOWN;
+        }
 
         /**
          * @brief 析构函数
@@ -511,6 +528,11 @@ namespace slow_json {
          * @return bool 是否为ELEMENT
          */
         [[nodiscard]] bool is_element() const noexcept { return _type == value_type::ELEMENT; }
+
+        std::string_view type_name()const noexcept{
+            assert_with_message(this->is_element(),"非基础元素对象");
+            return static_cast<helper::serializable_wrapper*>(this->_object_ptr)->type_name();
+        }
 
         /**
          * @brief 检查是否包含键
@@ -581,9 +603,16 @@ namespace slow_json {
          */
         dict operator[](std::size_t index) {
             assert_with_message(is_array(), "非数组类型无法按索引访问");
-            auto *vec = static_cast<std::vector<helper::serializable_wrapper> *>(_object_ptr);
-            assert_with_message(index < vec->size(), "数组越界: 下标%d, 长度%d", index, vec->size());
-            return dict{(*vec)[index].value(), value_type::ELEMENT};
+            auto&vec = *static_cast<std::vector<helper::serializable_wrapper> *>(_object_ptr);
+            assert_with_message(index < vec.size(), "数组越界: 下标%d, 长度%d", index, vec.size());
+            auto&object=vec[index];
+            if(object.type_name()=="slow_json::dict"){
+                return dict{static_cast<dict*>(object.value())->object(),value_type::DICT};
+            }
+            if(object.type_name()=="slow_json::list"){
+                return dict{static_cast<std::vector<helper::serializable_wrapper>*>(object.value()),value_type::LIST};
+            }
+            return dict{&object, value_type::ELEMENT};
         }
 
         /**
@@ -619,6 +648,7 @@ namespace slow_json {
          * @return void* 对象指针
          */
         [[nodiscard]] void *object() const noexcept {
+            assert_with_message(_type!=value_type::UNKNOWN,"类型异常");
             return (_type == value_type::ROOT_DICT) ? (void *) &_buffer : _object_ptr;
         }
 
