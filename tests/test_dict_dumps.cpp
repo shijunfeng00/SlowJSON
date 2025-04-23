@@ -18,7 +18,6 @@ void test_dict_dumps() {
             }}
     };
     slow_json::dumps(buffer, dict, 4);
-    std::cout<<"fuck:"<<buffer<<std::endl;
     assert_with_message(buffer.string() == R"({
     "name":"shijunfeng",
     "tuple":{
