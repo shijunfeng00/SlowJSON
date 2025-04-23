@@ -422,7 +422,7 @@ namespace slow_json {
     };
 
     /**
-     * 用户有自己的想法，根据from_config返回一个可以直接转换为JSON的slow_json::polymorphic_dict对象
+     * 用户有自己的想法，根据from_config返回一个可以直接转换为JSON的slow_json::dict对象
      * @tparam T
      */
     template<concepts::serializable_oop T>

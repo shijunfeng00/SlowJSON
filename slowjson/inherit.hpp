@@ -90,7 +90,7 @@ namespace slow_json {
      * @tparam SuperClass 父类类型
      * @tparam T 派生类类型
      * @param subclass_info 派生类的属性信息
-     * @return 合并父类和派生类属性信息的slow_json::polymorphic_dict
+     * @return 合并父类和派生类属性信息的slow_json::dict
      */
     template<typename SuperClass, typename T>
     requires std::is_same_v<T, slow_json::dict>

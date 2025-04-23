@@ -34,7 +34,7 @@ struct NodePolymorphic {
     }
 };
 
-void test_polymorphic_deserialization() {
+void test_dict_deserialization() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     std::string json_str = R"({
     "xxx":19260817,

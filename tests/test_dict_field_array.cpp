@@ -39,7 +39,7 @@ struct MultiTargetDetectKeyPointResult {
     }
 };
 
-void test_polymorphic_field_array() {
+void test_dict_field_array() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     slow_json::Buffer buffer;
     MultiTargetDetectKeyPointResult fuck;

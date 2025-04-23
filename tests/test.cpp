@@ -20,11 +20,11 @@ int main() {
     test_static_inherit_serialization();
     test_merge_dict();
     test_non_intrusive_serialization_deserialization();
-    test_polymorphic_deserialization();
+    test_dict_deserialization();
     test_static_dict_dumps();
-    test_polymorphic_dict_dumps();
-    test_polymorphic_serialization();
-    test_polymorphic_field_array();
+    test_dict_dumps();
+    test_dict_serialization();
+    test_dict_field_array();
     test_serializable_oop();
     test_serialization_nested();
     test_stl_dumps();

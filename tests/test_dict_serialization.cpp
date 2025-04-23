@@ -26,7 +26,7 @@ slow_json::dict NodeP::get_config() noexcept {
 }
 
 
-void test_polymorphic_serialization() {
+void test_dict_serialization() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     NodeP p;
     slow_json::Buffer buffer;

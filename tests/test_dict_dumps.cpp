@@ -6,7 +6,7 @@
 using namespace slow_json::static_string_literals;
 
 
-void test_polymorphic_dict_dumps() {
+void test_dict_dumps() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     slow_json::Buffer buffer(1000);
     slow_json::dict dict{
