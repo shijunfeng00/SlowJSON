@@ -606,6 +606,7 @@ namespace slow_json {
             auto&vec = *static_cast<std::vector<helper::serializable_wrapper> *>(_object_ptr);
             assert_with_message(index < vec.size(), "数组越界: 下标%d, 长度%d", index, vec.size());
             auto&object=vec[index];
+            // 可能存在多重嵌套
             if(object.type_name()=="slow_json::dict"){
                 return dict{static_cast<dict*>(object.value())->object(),value_type::DICT};
             }
