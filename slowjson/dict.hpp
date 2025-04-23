@@ -276,10 +276,10 @@ namespace slow_json {
             }
         };
 
-/**
- * @brief JSON键值对结构
- * @details 支持多种值类型：基本类型、类成员指针、列表、嵌套字典
- */
+        /**
+         * @brief JSON键值对结构
+         * @details 支持多种值类型：基本类型、类成员指针、列表、嵌套字典
+         */
         struct pair {
         public:
             using value_t = std::variant<
@@ -405,12 +405,14 @@ namespace slow_json {
             value_t _value; ///< 值variant
         };
 
-    } // namespace helper
+    }
 
-    //using list = std::initializer_list<helper::serializable_wrapper>; ///<
-    struct list:public std::initializer_list<helper::serializable_wrapper>{
-      using super_t=std::initializer_list<helper::serializable_wrapper>;
-      list(super_t&&object):super_t(object){}
+
+    struct list:public std::vector<helper::serializable_wrapper>{
+      using super_t=std::vector<helper::serializable_wrapper>;
+      list(std::initializer_list<helper::serializable_wrapper>&&object):super_t(std::move(object)){}
+      list(const list&)=delete;
+      list(list&&others)=default;
     };
 
 /**
