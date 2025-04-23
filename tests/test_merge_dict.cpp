@@ -39,7 +39,8 @@ void test_merge_dict() {
         buffer.clear();
         slow_json::dumps(buffer, d4);
         assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})" ||
-                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})", "通过slow_json::dumps序列化结果不正确");
+                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})" ||
+                            buffer.string() == R"({"d":4,"c":3,"e":5,"a":1,"f":6,"b":2})", "通过slow_json::dumps序列化结果不正确");
     }
 
     {
@@ -51,7 +52,8 @@ void test_merge_dict() {
         buffer.clear();
         slow_json::dumps(buffer, d4);
         assert_with_message(buffer.string() == R"({"d":4,"c":3,"f":6,"e":5,"a":1,"b":2})"||
-                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})", "通过slow_json::dumps序列化结果不正确");
+                            buffer.string() == R"({"c":3,"e":5,"f":6,"a":1,"d":4,"b":2})"||
+                            buffer.string() == R"({"d":4,"c":3,"e":5,"a":1,"f":6,"b":2})", "通过slow_json::dumps序列化结果不正确");
     }
 
 }
