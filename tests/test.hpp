@@ -130,7 +130,15 @@ void test_binary_search_tree();
  */
 void test_macro_serialization();
 
-// 测试使用slow_json::dict来进行C++ Class自定义对象的序列化，反序列化，以及继承派生类的处理
+/**
+ * 测试使用slow_json::dict来进行C++ Class自定义对象的序列化，反序列化，以及继承派生类的处理
+ */
+
 void run_dict_serialization_deserialization_inherit();
+
+/**
+ * 测试slow_json::dict的数据访问接口正确性
+ */
+void test_dict_visit();
 
 #endif //SLOWJSON_RUN_TEST_HPP

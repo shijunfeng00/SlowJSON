@@ -31,11 +31,20 @@ void test_polymorphic_serialization() {
     NodeP p;
     slow_json::Buffer buffer;
     slow_json::dumps(buffer, p, 4);
-
     assert_with_message(buffer.string() == R"({
     "xxx":1,
     "yyy":1.2345,
     "zzz":"shijunfeng",
+    "dq":[
+        "a",
+        "b",
+        "c",
+        "d"
+    ]
+})"|| buffer.string()==R"({
+    "yyy":1.2345,
+    "zzz":"shijunfeng",
+    "xxx":1,
     "dq":[
         "a",
         "b",

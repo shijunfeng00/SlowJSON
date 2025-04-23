@@ -2,6 +2,7 @@
 // Created by hy-20 on 2024/8/12.
 //
 #include "test.hpp"
+#include "slowjson.hpp"
 #include <iostream>
 
 int main() {
@@ -38,6 +39,7 @@ int main() {
     test_binary_search_tree();
     test_macro_serialization();
     run_dict_serialization_deserialization_inherit();
+    test_dict_visit();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }
