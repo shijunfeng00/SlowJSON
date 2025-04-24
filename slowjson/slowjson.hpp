@@ -11,5 +11,7 @@
 #include "inherit.hpp"
 #include "ostream.hpp"
 #include "macro.hpp"
-
+#include "dynamic_dict.hpp"
+#include "static_dict.hpp"
+#include "dict.hpp"
 #endif //SLOWJSON_SLOWJSON_HPP
