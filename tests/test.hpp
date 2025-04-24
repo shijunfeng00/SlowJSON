@@ -31,7 +31,7 @@ void test_static_inherit_deserialization();
 void test_static_inherit_serialization();
 
 /**
- * 测试合并两个dict，包括slow_json::static_dict和slow_json::polymorphic_dict
+ * 测试合并两个dict，包括slow_json::static_dict和slow_json::dict
  */
 void test_merge_dict();
 
@@ -41,9 +41,9 @@ void test_merge_dict();
 void test_non_intrusive_serialization_deserialization();
 
 /**
- * 基于slow_json::polymorphic的反序列化
+ * 基于slow_json::dict的反序列化
  */
-void test_polymorphic_deserialization();
+void test_dict_deserialization();
 
 /**
  * 采用slow_json::dumps来序列化slow_json::static_dict
@@ -51,19 +51,19 @@ void test_polymorphic_deserialization();
 void test_static_dict_dumps();
 
 /**
- * 采用slow_json::dumps来序列化slow_json::polymorphic_dict
+ * 采用slow_json::dumps来序列化slow_json::dict
  */
-void test_polymorphic_dict_dumps();
+void test_dict_dumps();
 
 /**
- * 测试slow_json::polymorphic对自定义类进行序列化
+ * 测试slow_json::dict对自定义类进行序列化
  */
-void test_polymorphic_serialization();
+void test_dict_serialization();
 
 /**
  * 成员变量是C风格数组的情况
  */
-void test_polymorphic_field_array();
+void test_dict_field_array();
 
 /**
  * 测试采用面向对象，继承ISerializable的方式来使得slow_json支持自定义类
@@ -130,7 +130,15 @@ void test_binary_search_tree();
  */
 void test_macro_serialization();
 
-// 测试使用slow_json::dict来进行C++ Class自定义对象的序列化，反序列化，以及继承派生类的处理
+/**
+ * 测试使用slow_json::dict来进行C++ Class自定义对象的序列化，反序列化，以及继承派生类的处理
+ */
+
 void run_dict_serialization_deserialization_inherit();
+
+/**
+ * 测试slow_json::dict的数据访问接口正确性
+ */
+void test_dict_visit();
 
 #endif //SLOWJSON_RUN_TEST_HPP

@@ -2,6 +2,7 @@
 // Created by hy-20 on 2024/8/12.
 //
 #include "test.hpp"
+#include "slowjson.hpp"
 #include <iostream>
 
 int main() {
@@ -19,11 +20,11 @@ int main() {
     test_static_inherit_serialization();
     test_merge_dict();
     test_non_intrusive_serialization_deserialization();
-    test_polymorphic_deserialization();
+    test_dict_deserialization();
     test_static_dict_dumps();
-    test_polymorphic_dict_dumps();
-    test_polymorphic_serialization();
-    test_polymorphic_field_array();
+    test_dict_dumps();
+    test_dict_serialization();
+    test_dict_field_array();
     test_serializable_oop();
     test_serialization_nested();
     test_stl_dumps();
@@ -38,6 +39,7 @@ int main() {
     test_binary_search_tree();
     test_macro_serialization();
     run_dict_serialization_deserialization_inherit();
+    test_dict_visit();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

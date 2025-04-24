@@ -322,7 +322,7 @@ namespace slow_json {
     template<>
     struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
         static void dump_impl(Buffer&buffer,const dict&object)noexcept{
-            DumpToString<dict::map_type>::dump(buffer,*static_cast<dict::map_type*>(object._object));
+            DumpToString<dict::map_type>::dump(buffer,*static_cast<dict::map_type*>(object.object()));
         }
     };
 
@@ -336,7 +336,7 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
-                for(const auto&[k,v]:*static_cast<dict::map_type*>(config._object)){
+                for(const auto&[k,v]:*static_cast<dict::map_type*>(config.object())){
                     const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
                     if(value_ptr!=nullptr){
                         ((helper::field_wrapper*)value_ptr)->_object_ptr=&value;
@@ -345,7 +345,6 @@ namespace slow_json {
                 DumpToString<decltype(config)>::dump(buffer,config);
             }
             else {
-                // slow_json::static_dict
                 auto get_value = []<typename Tp>(const Tp &tp) {
                     if constexpr (concepts::slow_json_static_dict<Tp>) {
                         return static_cast<typename Tp::super_type>(tp);
@@ -423,7 +422,7 @@ namespace slow_json {
     };
 
     /**
-     * 用户有自己的想法，根据from_config返回一个可以直接转换为JSON的slow_json::polymorphic_dict对象
+     * 用户有自己的想法，根据from_config返回一个可以直接转换为JSON的slow_json::dict对象
      * @tparam T
      */
     template<concepts::serializable_oop T>

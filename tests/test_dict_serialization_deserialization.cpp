@@ -54,25 +54,27 @@ void run_dict_serialization_deserialization_inherit() {
 
     // 执行序列化
     slow_json::dumps(buffer, dict_list_test, 4);
-
     // 验证序列化结果
     assert_with_message(
             buffer.string() == R"({
+    "x":1111.22216796875,
+    "y":333333,
+    "z":"i wanna be the guy",
     "value":[
         {
-            "z":"3",
+            "x":1.0,
             "y":2,
-            "x":1.0
+            "z":"3"
         },
         {
-            "z":"33",
+            "x":11.0,
             "y":22,
-            "x":11.0
+            "z":"33"
         },
         {
-            "z":"shijunfeng@swpu",
+            "x":114514.0,
             "y":1919810,
-            "x":114514.0
+            "z":"shijunfeng@swpu"
         }
     ],
     "vec":[
@@ -84,10 +86,7 @@ void run_dict_serialization_deserialization_inherit() {
             7,
             15.0
         ]
-    ],
-    "x":1111.22216796875,
-    "y":333333,
-    "z":"i wanna be the guy"
+    ]
 })", "slow_json::dumps序列化结果不符合预期");
 
     // 测试反序列化 ============================================
