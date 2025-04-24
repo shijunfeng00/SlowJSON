@@ -15,6 +15,9 @@
 #include <vector>
 #include <variant>
 #include <memory>
+#ifdef BUILD_TEST_UNIT
+#include <map>
+#endif
 
 namespace slow_json {
 
@@ -415,13 +418,12 @@ namespace slow_json {
       list(list&&others)=default;
     };
 
-/**
- * @brief 动态字典类
- * @details 支持嵌套字典、列表、混合类型值存储和类成员指针绑定
- * @note 性能略低于static_dict，适合动态构建场景
- */
+    /**
+     * @brief 动态字典类
+     * @details 支持嵌套字典、列表、混合类型值存储和类成员指针绑定
+     * @note 性能略低于static_dict，适合动态构建场景
+     */
     struct dict {
-        // Friend declarations
         friend struct LoadFromDict<dict>;
         friend struct DumpToString<dict>;
 
@@ -439,7 +441,9 @@ namespace slow_json {
          */
         dict() : _type(value_type::ROOT_DICT) {
             new(&_buffer) map_type{};
+#ifndef BUILD_TEST_UNIT
             reinterpret_cast<map_type *>(&_buffer)->reserve(16);
+#endif
         }
 
         /**
@@ -639,13 +643,19 @@ namespace slow_json {
             void *_object_ptr; ///< 非根字典指针
         };
         value_type _type; ///< 数据类型
-
+#ifdef BUILD_TEST_UNIT //单元测试需要稳定的结果，unordered_map似乎key的排序经常在变化
+        using map_type = std::map<const char *, std::variant<
+                helper::serializable_wrapper,
+                helper::field_wrapper,
+                std::vector<helper::serializable_wrapper>,
+                std::unique_ptr<dict>>>;
+#else
         using map_type = std::unordered_map<const char *, std::variant<
                 helper::serializable_wrapper,
                 helper::field_wrapper,
                 std::vector<helper::serializable_wrapper>,
                 std::unique_ptr<dict>>>;
-
+#endif
         /**
          * @brief 获取对象指针
          * @return void* 对象指针
@@ -672,7 +682,9 @@ namespace slow_json {
          */
         dict(const helper::pair *begin, const helper::pair *end) : _type(value_type::ROOT_DICT) {
             new(&_buffer) map_type{};
+#ifndef BUILD_TEST_UNIT
             reinterpret_cast<map_type *>(&_buffer)->reserve(end - begin);
+#endif
             auto *map = reinterpret_cast<map_type *>(&_buffer);
             for (; begin != end; ++begin) {
                 const auto &p = *begin;

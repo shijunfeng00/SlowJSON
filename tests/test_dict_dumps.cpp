@@ -19,19 +19,12 @@ void test_dict_dumps() {
     };
     slow_json::dumps(buffer, dict, 4);
     assert_with_message(buffer.string() == R"({
+    "test":123,
     "name":"shijunfeng",
     "tuple":{
         "haha":"wawa",
         "single":"boy"
-    },
-    "test":123
-})"|| buffer.string() == R"({
-    "tuple":{
-        "haha":"wawa",
-        "single":"boy"
-    },
-    "name":"shijunfeng",
-    "test":123
+    }
 })", "采用slow_json::dumps序列化得到的结果不正确");
     slow_json::dict dict2{
             {"name", std::string{"str3"}},
@@ -60,11 +53,9 @@ void test_dict_dumps() {
     buffer.clear();
     slow_json::dumps(buffer,dict2,4);
     assert_with_message(buffer.string()==R"({
-    "nested_dict":{
-        "y":"2.3asd",
-        "z":2.345,
-        "x":1
-    },
+    "name":"str3",
+    "value":123,
+    "enabled":true,
     "list":[
         1,
         "str1",
@@ -77,17 +68,17 @@ void test_dict_dumps() {
             44
         ],
         {
-            "list2":[
-                1,
-                "2",
-                3.456789
-            ],
+            "a":1234,
+            "b":456,
             "c":[
                 2,
                 "2"
             ],
-            "b":456,
-            "a":1234
+            "list2":[
+                1,
+                "2",
+                3.456789
+            ]
         },
         [
             1,
@@ -95,8 +86,10 @@ void test_dict_dumps() {
             3.456789
         ]
     ],
-    "value":123,
-    "enabled":true,
-    "name":"str3"
+    "nested_dict":{
+        "x":1,
+        "y":"2.3asd",
+        "z":2.345
+    }
 })","slow_json::dumps序列化结恶果不正确")
 }

@@ -33,7 +33,7 @@ void test_serializable_oop() {
     data.z = "haha";
     slow_json::Buffer buffer{100};
     slow_json::dumps(buffer, data);
-    assert_with_message(buffer.string() == "{\"z\":\"haha\",\"y\":345.678,\"x\":123}",
+    assert_with_message(buffer.string() == "{\"x\":123,\"y\":345.678,\"z\":\"haha\"}",
                         "通过slow_json::dumps序列化得到的结果不正确");
     slow_json::loads(data2, buffer.string());
     assert_with_message(data2.x == 123, "通过slow_json::loads反序列化得到的结果不正确");

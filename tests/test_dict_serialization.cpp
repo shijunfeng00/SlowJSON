@@ -32,24 +32,14 @@ void test_dict_serialization() {
     slow_json::Buffer buffer;
     slow_json::dumps(buffer, p, 4);
     assert_with_message(buffer.string() == R"({
-    "xxx":1,
-    "yyy":1.2345,
-    "zzz":"shijunfeng",
     "dq":[
         "a",
         "b",
         "c",
         "d"
-    ]
-})"|| buffer.string()==R"({
-    "yyy":1.2345,
+    ],
     "zzz":"shijunfeng",
-    "xxx":1,
-    "dq":[
-        "a",
-        "b",
-        "c",
-        "d"
-    ]
+    "yyy":1.2345,
+    "xxx":1
 })", "通过slow_json::dumps序列化得到的结果不正确");
 }
