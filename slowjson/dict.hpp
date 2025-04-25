@@ -219,10 +219,10 @@ namespace slow_json {
             }
 
         private:
-            static constexpr std::size_t buffer_size = 24; ///< 小对象缓冲区大小
+            static constexpr std::size_t buffer_size = 32; ///< 小对象缓冲区大小
             union {
                 mutable void *_buffer_ptr; ///< 大对象指针，指向堆内存
-                alignas(8) char _buffer[buffer_size]; ///< 小对象缓冲区
+                alignas(16) char _buffer[buffer_size]; ///< 小对象缓冲区
             };
             mutable const char *_type_name; ///< 类型名称，带堆分配标志
             void (*_dump_fn)(slow_json::Buffer &, void *); ///< 序列化函数指针
