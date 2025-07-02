@@ -7,7 +7,7 @@ option(BUILD_TEST "Build test units" OFF)
 # Compiler flags
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Debug模式下不开启O3优化，并生成调试信息
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -g -fconcepts -Wall -Wno-unused-function -Wno-unused-variable -Wno-deprecated-declarations -Wno-sign-compare -Wno-deprecated -Werror=return-local-addr -Werror=return-type")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2a -g -fsanitize=address -fconcepts -Wall -Wno-unused-function -Wno-unused-variable -Wno-deprecated-declarations -Wno-sign-compare -Wno-deprecated -Werror=return-local-addr -Werror=return-type")
     message("g++ using Debug mode: ${CMAKE_CXX_FLAGS}")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     # Release模式关闭调试信息，并采用O3优化
