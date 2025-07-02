@@ -24,7 +24,7 @@ namespace slow_json {
          * 默认构造函数
          * @param capacity 初始缓冲区最大内存大小，单位为字节
          */
-        explicit Buffer(std::size_t capacity = 0) :
+        explicit Buffer(std::size_t capacity = 32) :
                 _capacity(capacity), _size(0), _offset(0),
                 _buffer(capacity ? new char[_capacity + 1] : nullptr) {
             assert_with_message(capacity == 0 || _buffer != nullptr, "分配缓冲区失败，容量=%zu", capacity);
@@ -345,6 +345,53 @@ namespace slow_json {
             assert_with_message(buffer._buffer != nullptr || buffer._size == 0, "缓冲区指针为空且大小非零");
             os << buffer.c_str();
             return os;
+        }
+
+        /**
+         * @brief 从缓冲区末尾分配一块未初始化的内存（默认1字节对齐）
+         * @param size 需要分配的字节数
+         * @return 指向分配内存起始位置的指针
+         */
+        void* allocate(std::size_t size) {
+            return allocate(size, 1); // 默认1字节对齐
+        }
+
+        /**
+         * @brief 从缓冲区末尾分配一块对齐的未初始化内存
+         * @param size 需要分配的字节数
+         * @param alignment 内存对齐要求（必须是2的幂）
+         * @return 指向分配内存起始位置的指针
+         * @note 对齐值必须是2的幂（如1,2,4,8,16,...）
+         */
+        void* allocate(std::size_t size, std::size_t alignment) {
+            assert_with_message((alignment & (alignment - 1)) == 0,
+                                "对齐值必须是2的幂, alignment=%zu", alignment);
+
+            // 计算当前指针和对齐偏移
+            char* ptr = _buffer + _size;
+            uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
+            uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
+            std::size_t padding = aligned_addr - addr;
+            std::size_t total_needed = padding + size;
+
+            // 检查并处理扩容
+            if (_size + total_needed > _capacity) {
+                std::size_t new_capacity = std::max(1ul, _capacity);
+                while (new_capacity <= _size + total_needed)
+                    new_capacity <<= 1;
+                this->reserve(new_capacity);
+
+                // 重新计算对齐地址（缓冲区地址可能改变）
+                ptr = _buffer + _size;
+                addr = reinterpret_cast<uintptr_t>(ptr);
+                aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
+                padding = aligned_addr - addr;
+                total_needed = padding + size; // 重新计算
+            }
+
+            // 更新大小并返回对齐地址
+            _size += total_needed;
+            return reinterpret_cast<void*>(aligned_addr);
         }
 
     private:
