@@ -322,7 +322,27 @@ namespace slow_json {
     template<>
     struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
         static void dump_impl(Buffer&buffer,const dict&object)noexcept{
-            DumpToString<dict::map_type>::dump(buffer,*static_cast<dict::map_type*>(object.object()));
+            buffer+='{';
+            for(const auto&[k,v]:object._data){
+                DumpToString<const char*>::dump(buffer,k);
+                buffer+=':';
+                DumpToString<helper::serializable_wrapper>::dump(buffer,v);
+                buffer+=',';
+            }
+            if(buffer.back()==','){
+                buffer.back()='}';
+            }else {
+                buffer+='}';
+            }
+        }
+    };
+
+    template<>
+    struct DumpToString<helper::pair>:public IDumpToString<DumpToString<helper::pair>>{
+        static void dump_impl(Buffer&buffer,const helper::pair&object)noexcept{
+            DumpToString<const char*>::dump(buffer,object._key);
+            buffer+=':';
+            DumpToString<helper::serializable_wrapper>::dump(buffer,object._value);
         }
     };
 
@@ -336,11 +356,10 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
-                for(const auto&[k,v]:*static_cast<dict::map_type*>(config.object())){
-                    const void*value_ptr=std::get_if<helper::field_wrapper>(&v);
-                    if(value_ptr!=nullptr){
-                        ((helper::field_wrapper*)value_ptr)->_object_ptr=&value;
-                    }else{}
+                for(const auto&it:config._data){
+                    if(auto value_ptr=static_cast<const helper::field_wrapper*>(it._value.value());value_ptr!=nullptr){
+                        value_ptr->_object_ptr=&value;
+                    }
                 };
                 DumpToString<decltype(config)>::dump(buffer,config);
             }
