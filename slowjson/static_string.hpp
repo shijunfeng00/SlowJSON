@@ -18,7 +18,7 @@ namespace slow_json {
     template<char...chs>
     struct StaticString {
         /// 静态字符串数组。
-        alignas(4) constexpr static const char str[] = {chs...};
+        alignas(8) constexpr static const char str[] = {chs...};
 
         /**
          * @brief 将 StaticString 转换为 C 风格字符串。
