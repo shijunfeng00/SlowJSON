@@ -299,7 +299,7 @@ namespace slow_json::helper {
         friend struct pair;
         friend struct LoadFromDict<dict>;
         friend struct DumpToString<dict>;
-
+        friend dict merge(dict&&, dict&&);
         /**
          * @brief 构造函数，使用初始化列表构造字典
          * @param data 初始化列表，包含键值对
@@ -330,7 +330,6 @@ namespace slow_json::helper {
          * @details 移动源字典的键值对数据到新对象
          */
         dict(dict&& d) : _data{std::move(d._data)} {}
-
     private:
         std::vector<pair> _data; ///< 存储键值对的向量
     };
