@@ -18,7 +18,7 @@ void test_buffer() {
 
     std::string p = "caonina_caonima_caonima_caonima";
 
-    buf.append("fuck fuck fuck", 41);
+    buf.append("fuck fuck fuck", 14);
 
     buf.append(p.c_str(), p.size());
 
