@@ -55,10 +55,10 @@ namespace simple {
 // RapidJSON 测试
     inline void benchmark_rapidjson() {
         rapidjson::Document doc;
-        doc.SetObject();
         auto &allocator = doc.GetAllocator();
         auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
+            doc.SetObject();
             doc.AddMember("name", "shijunfeng00", allocator);
             doc.AddMember("age", 19, allocator);
             doc.AddMember("nation", "China", allocator);
@@ -70,7 +70,6 @@ namespace simple {
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             doc.Accept(writer);
-            doc.Clear();
             buffer.GetString();
         }
         auto end = std::chrono::high_resolution_clock::now();
