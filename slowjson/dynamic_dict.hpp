@@ -382,9 +382,9 @@ namespace slow_json {
             /**
              * @brief 析构函数，根据所有权释放内存
              */
-            ~SharedData() {
+            virtual ~SharedData() {
                 if (_owns_memory) {
-                    delete _root;
+                    delete static_cast<const rapidjson::Document *>(_root);
                     delete _allocator;
                 }
             }
