@@ -4,22 +4,38 @@
 
 using namespace slow_json::static_string_literals;
 
-struct NodeUsingCPtr{
-    NodeUsingCPtr(int value=0):value(value){}
-    NodeUsingCPtr*next=nullptr;
-    int value=0;
-    $config(NodeUsingCPtr,next,value);
-};
-struct ListUsingCPtr{
-    NodeUsingCPtr*begin{new NodeUsingCPtr(0)};
-    void push_back(int value){
-        auto back=this->begin;
-        while(back->next!=nullptr){
-            back=back->next;
-        };
-        back->next=new NodeUsingCPtr(value);
+struct NodeUsingCPtr {
+    NodeUsingCPtr(int value = 0) : value(value) {}
+    ~NodeUsingCPtr() {
+        // 递归删除后续节点
+        delete next;
     }
-    $config(ListUsingCPtr,begin);
+
+    NodeUsingCPtr* next = nullptr;
+    int value = 0;
+    $config(NodeUsingCPtr, next, value);
+};
+
+struct ListUsingCPtr {
+    ListUsingCPtr()
+            : begin(new NodeUsingCPtr(0))
+    {}
+
+    ~ListUsingCPtr() {
+        // 删除头节点，连带删除整条链
+        delete begin;
+    }
+
+    void push_back(int value) {
+        auto back = this->begin;
+        while (back->next != nullptr) {
+            back = back->next;
+        }
+        back->next = new NodeUsingCPtr(value);
+    }
+
+    NodeUsingCPtr* begin{nullptr};
+    $config(ListUsingCPtr, begin);
 };
 
 void test_list_c_ptr_serialization_deserialization() {

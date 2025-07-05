@@ -69,7 +69,8 @@ void test_stl_loads() {
         slow_json::loads(fuck, json_str);
         slow_json::Buffer buffer{1000};
         slow_json::dumps(buffer, fuck);
-        assert_with_message(buffer.string() == "{\"z\":[2,3,4,5,6],\"y\":[1],\"x\":[4]}",
+        std::cout<<"fuck:"<<buffer<<std::endl;
+        assert_with_message(buffer.string() == "{\"x\":[4],\"y\":[1],\"z\":[2,3,4,5,6]}",
                             "通过slow_json::dumps序列化并通过slow_json::loads反序列号i化之后结果不对");
     }
 }

@@ -18,57 +18,72 @@ public:
     BTNode():left(nullptr),right(nullptr){}
     $config(BTNode,left,right,value);
 };
-
-class BinarySearchTree{
+class BinarySearchTree {
 private:
-    BTNode*root;
-    void inorder_traversal(BTNode*node,std::vector<int>&result){
-        if(node->left) {
-            inorder_traversal(node->left,result);
-        }
+    BTNode* root;
+
+    // 递归中序遍历
+    void inorder_traversal(BTNode* node, std::vector<int>& result) {
+        if (!node) return;
+        inorder_traversal(node->left, result);
         result.emplace_back(node->value);
-        if(node->right) {
-            inorder_traversal(node->right,result);
-        }
+        inorder_traversal(node->right, result);
     }
+
+    // 递归销毁整棵子树
+    void destroy(BTNode* node) {
+        if (!node) return;
+        destroy(node->left);
+        destroy(node->right);
+        delete node;
+    }
+
 public:
-    BinarySearchTree():root(nullptr){}
-    void insert(int value){
-        auto node=root;
-        if(root==nullptr){
-            root=new BTNode();
-            root->value=value;
+    BinarySearchTree(): root(nullptr) {}
+
+    // 析构时销毁整棵树
+    ~BinarySearchTree() {
+        destroy(root);
+    }
+
+    void insert(int v) {
+        if (!root) {
+            root = new BTNode();
+            root->value = v;
             return;
         }
-        while(true) {
-            if (value < node->value) {
-                if(node->left) {
-                    node = node->left;
-                }else{
-                    node->left=new BTNode();
-                    node->left->value=value;
+        BTNode* cur = root;
+        while (true) {
+            if (v < cur->value) {
+                if (cur->left) {
+                    cur = cur->left;
+                } else {
+                    cur->left = new BTNode();
+                    cur->left->value = v;
                     break;
                 }
-            } else if (value > node->value) {
-                if(node->right) {
-                    node = node->right;
-                }else{
-                    node->right=new BTNode();
-                    node->right->value=value;
+            } else if (v > cur->value) {
+                if (cur->right) {
+                    cur = cur->right;
+                } else {
+                    cur->right = new BTNode();
+                    cur->right->value = v;
                     break;
                 }
             } else {
+                // 相等则不插入
                 break;
             }
         }
     }
-    std::vector<int>inorder_traversal(){
-        std::vector<int>result;
-        inorder_traversal(root,result);
+
+    std::vector<int> inorder_traversal() {
+        std::vector<int> result;
+        inorder_traversal(root, result);
         return result;
     }
 
-    $config(BinarySearchTree,root);
+    $config(BinarySearchTree, root);
 };
 
 void test_binary_search_tree(){
