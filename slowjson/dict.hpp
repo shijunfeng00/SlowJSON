@@ -410,8 +410,6 @@ namespace slow_json::details {
         }
     };
 
-
-
     /**
     * @brief 动态字典结构，用于存储键值对集合
     * @details 提供键值对的存储、序列化和反序列化功能，支持动态数据操作
@@ -422,6 +420,11 @@ namespace slow_json::details {
         friend struct DumpToString<dict>;
         friend dict merge(dict&&, dict&&);
 
+        //与下面pair内存布局一致，解决pair和dict交叉依赖的问题，后续预计通过分离定义和实现（hpp/tpp）来解决。
+        struct _pair{
+            const char *_key; ///< 键，字符串形式
+            serializable_wrapper _value; ///< 值，序列化包装器形式
+        };
 
         struct element{
             explicit element(serializable_wrapper*data):_data{data}{}
@@ -491,7 +494,7 @@ namespace slow_json::details {
                 auto*data=(serializable_wrapper*)_data;
                 return data->type_name();
             }
-            
+
             element operator[](std::size_t index){
                 auto*data=(serializable_wrapper*)_data;
                 auto type=data->get_value_element_type();
@@ -571,7 +574,7 @@ namespace slow_json::details {
                 return false;
             }
             auto key_fn=[](pair&p){
-                return *((const char**)&p);
+                return reinterpret_cast<_pair*>(&p)->_key;
             };
             if(!_key_to_index){
                 _key_to_index=new key_to_index{};
@@ -584,7 +587,7 @@ namespace slow_json::details {
 
         bool empty()noexcept{
             auto key_fn=[](pair&p){
-                return *((const char**)&p);
+                return reinterpret_cast<_pair*>(&p)->_key;
             };
             if(!_key_to_index){
                 _key_to_index=new key_to_index{};
@@ -598,10 +601,10 @@ namespace slow_json::details {
         element operator[](const char*key){
             assert_with_message(key,"key为空指针");
             auto key_fn=[](pair&p){
-                return *((const char**)&p);
+                return reinterpret_cast<_pair*>(&p)->_key;
             };
             auto value_fn=[](pair&p){
-                return (serializable_wrapper*)(sizeof(const char*)+(uintptr_t)&p);
+                return &reinterpret_cast<_pair*>(&p)->_value;
             };
             if(!_key_to_index){
                 _key_to_index=new key_to_index{};
