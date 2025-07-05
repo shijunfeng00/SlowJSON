@@ -9,12 +9,14 @@ using namespace slow_json;
 void test_dict_visit() {
     printf("run %s\n", __PRETTY_FUNCTION__);
 
+    std::vector<int>v{1,1,4,5,1,4};
     // 创建复杂的测试字典
     dict dict{
             {"x", {
                           {"xx", 20001026},
                            {"yy", "wori"}
                   }},
+            {"v",v},
             {"list", {110, 1, 2, 3, "4", 5}},
             {"y", "2.3asd"},
             {"z", 2.345f},
@@ -27,6 +29,8 @@ void test_dict_visit() {
                   }}
     };
 
+
+
     // 测试基本键值访问和类型转换
     assert_with_message(dict.contains("x"), "应包含 x 键");
     assert_with_message(dict["x"].is_dict(), "x 键应为字典");
@@ -35,6 +39,14 @@ void test_dict_visit() {
     assert_with_message(dict["x"]["xx"].cast<int>() == 20001026, "x.xx 应为 20001026");
     assert_with_message(dict["x"]["yy"].as_type<const char*>(), "x.yy 应为 const char* 类型");
     assert_with_message(std::strcmp(dict["x"]["yy"].cast<const char*>(), "wori") == 0, "x.yy 应为 wori");
+
+    assert_with_message(dict["v"].as_type<std::vector<int>>(),"v 键 应为 std::vector<int> 类型");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[0]==1,"v[0]  应为 1");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[1]==1,"v[0]  应为 1");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[2]==4,"v[0]  应为 4");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[3]==5,"v[0]  应为 5");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[4]==1,"v[0]  应为 1");
+    assert_with_message(dict["v"].cast<std::vector<int>>()[5]==4,"v[0]  应为 4");
 
     assert_with_message(dict.contains("y"), "应包含 y 键");
     assert_with_message(dict["y"].as_type<const char*>(), "y 键应为 const char* 类型");
