@@ -81,7 +81,7 @@ namespace slow_json {
          * @brief 移动构造函数，转移内部指针
          * @param other 另一个 dynamic_dict 对象
          */
-        dynamic_dict(dynamic_dict &&other) noexcept
+        dynamic_dict(dynamic_dict &&other) SLOW_JSON_NOEXCEPT
                 : _shared(other._shared), _value(other._value)
 #ifndef NDEBUG
                 , _json_str(std::move(other._json_str))
@@ -133,7 +133,7 @@ namespace slow_json {
          * @param other 另一个 dynamic_dict 对象
          * @return 当前对象的引用
          */
-        dynamic_dict &operator=(dynamic_dict &&other) noexcept {
+        dynamic_dict &operator=(dynamic_dict &&other) SLOW_JSON_NOEXCEPT {
             if (this != &other) {
                 if (_shared) {
                     if (--_shared->_ref_count == 0) {
@@ -192,7 +192,7 @@ namespace slow_json {
          * @brief 判断 JSON 是否为空（null）
          * @return 如果 JSON 是 null 则返回 true，否则返回 false
          */
-        [[nodiscard]] bool empty() const noexcept {
+        [[nodiscard]] bool empty() const SLOW_JSON_NOEXCEPT {
             return _value->IsNull();
         }
 
@@ -308,14 +308,14 @@ namespace slow_json {
          * @param key 键名称
          * @return 如果包含该键返回 true，否则返回 false
          */
-        [[nodiscard]] bool contains(std::string_view key) const noexcept {
+        [[nodiscard]] bool contains(std::string_view key) const SLOW_JSON_NOEXCEPT {
             assert_with_message(_value->IsObject(),
                                 "试图把JSON当作字典访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",
                                 _json_str.c_str());
             return _value->HasMember(key.data());
         }
 
-        [[nodiscard]] std::unordered_map<std::string_view,dynamic_dict>as_dict()const noexcept{
+        [[nodiscard]] std::unordered_map<std::string_view,dynamic_dict>as_dict()const SLOW_JSON_NOEXCEPT{
             assert_with_message(this->is_object(),"非字典类型无法调用该接口");
             std::unordered_map<std::string_view,dynamic_dict>result;
             for(auto&[k,v]:_value->GetObject()){
@@ -328,7 +328,7 @@ namespace slow_json {
          * 将对象转换为一个列表
          * @return 转化为std::vector的对象 ，每一个元素为JSON列表中的一个元素（item）
          */
-        [[nodiscard]] std::vector<dynamic_dict>as_list()const noexcept{
+        [[nodiscard]] std::vector<dynamic_dict>as_list()const SLOW_JSON_NOEXCEPT{
             assert_with_message(this->is_array(),"非字典类型无法调用该接口");
             std::vector<dynamic_dict>result;
             for(auto&v:_value->GetArray()){
@@ -344,7 +344,7 @@ namespace slow_json {
          * @brief 判断 JSON 是否为数组
          * @return 如果为数组返回 true，否则返回 false
          */
-        [[nodiscard]] bool is_array() const noexcept {
+        [[nodiscard]] bool is_array() const SLOW_JSON_NOEXCEPT {
             return _value->IsArray();
         }
 
@@ -352,7 +352,7 @@ namespace slow_json {
          * @brief 判断 JSON 是否为对象
          * @return 如果为对象返回 true，否则返回 false
          */
-        [[nodiscard]] bool is_object() const noexcept {
+        [[nodiscard]] bool is_object() const SLOW_JSON_NOEXCEPT {
             return _value->IsObject();
         }
 
@@ -362,7 +362,7 @@ namespace slow_json {
          * @brief 获取当前 JSON 的字符串表示，用于调试
          * @return JSON 字符串
          */
-        [[nodiscard]] const std::string &json_str() const noexcept {
+        [[nodiscard]] const std::string &json_str() const SLOW_JSON_NOEXCEPT {
             return _json_str;
         }
 #endif
@@ -423,7 +423,7 @@ namespace slow_json {
         /**
          * @brief 更新调试用的 JSON 字符串表示
          */
-        void update_json_str() noexcept {
+        void update_json_str() SLOW_JSON_NOEXCEPT {
             rapidjson::StringBuffer rapid_buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(rapid_buffer);
             _value->Accept(writer);

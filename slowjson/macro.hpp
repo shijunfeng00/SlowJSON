@@ -67,7 +67,7 @@
  * 通过这个函数，使得slowJSON支持将该对象序列化为JSON，或从JSON进行反序列化 \
  * @return 一个可序列化的对象                                        \
  */                                                               \
-static constexpr auto get_config()noexcept{                                 \
+static constexpr auto get_config()SLOW_JSON_NOEXCEPT{                                 \
     using namespace slow_json::static_string_literals;            \
     using __this=class_name;                                      \
     return slow_json::inherit supers(slow_json::static_dict{      \
@@ -86,7 +86,7 @@ static decltype([](){                                         \
     return slow_json::inherit supers(slow_json::static_dict{      \
         SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
     });                                                      \
-}()) get_config()noexcept;
+}()) get_config()SLOW_JSON_NOEXCEPT;
 
 
 #define $$config_impl(supers,class_name,...)                               \
@@ -100,7 +100,7 @@ decltype([](){                                         \
     return  slow_json::inherit supers(slow_json::static_dict{      \
         SJ_FOREACH(PROCESS_FIELD, 0, ##__VA_ARGS__)               \
     });                                                       \
-}()) class_name::get_config()noexcept{                                 \
+}()) class_name::get_config()SLOW_JSON_NOEXCEPT{                                 \
     using namespace slow_json::static_string_literals;            \
     using __this=class_name;                                      \
     return slow_json::inherit supers(slow_json::static_dict{      \

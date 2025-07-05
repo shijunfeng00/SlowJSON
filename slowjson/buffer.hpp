@@ -38,7 +38,7 @@ namespace slow_json {
          * @param index 数组下标
          * @return
          */
-        char &operator[](std::size_t index) noexcept {
+        char &operator[](std::size_t index) SLOW_JSON_NOEXCEPT {
             assert_with_message(_buffer != nullptr, "缓冲区指针为空");
             assert_with_message(index < _size, "数组下标越界，index=%zu，_size=%zu", index, _size);
             return _buffer[index];
@@ -49,7 +49,7 @@ namespace slow_json {
          * @param index 数组下标
          * @return
          */
-        const char &operator[](std::size_t index) const noexcept {
+        const char &operator[](std::size_t index) const SLOW_JSON_NOEXCEPT {
             assert_with_message(_buffer != nullptr, "缓冲区指针为空");
             assert_with_message(index < _size, "数组下标越界，index=%zu，_size=%zu", index, _size);
             return _buffer[index];
@@ -59,7 +59,7 @@ namespace slow_json {
          * 在末尾插入一个字符
          * @param ch 被插入的字符
          */
-        void push_back(char ch) noexcept {
+        void push_back(char ch) SLOW_JSON_NOEXCEPT {
             assert_with_message(_size <= _capacity, "当前大小超出容量，_size=%zu，_capacity=%zu", _size, _capacity);
             if (_size >= _capacity) {
                 // 如果插入后的大小超过最大容量，则进行扩容，容量变为当前的2倍
@@ -79,7 +79,7 @@ namespace slow_json {
         /**
          * 删除末尾的最后一个元素
          */
-        void pop_back() noexcept {
+        void pop_back() SLOW_JSON_NOEXCEPT {
             assert_with_message(_size > 0, "数组为空，无法删除元素");
             assert_with_message(_buffer != nullptr, "缓冲区指针为空");
             _size--;
@@ -89,7 +89,7 @@ namespace slow_json {
          * 获得缓冲区最后一个字符的引用
          * @return
          */
-        char &back() noexcept {
+        char &back() SLOW_JSON_NOEXCEPT {
             assert_with_message(_size != 0, "数组为空，无法获取最后一个元素");
             assert_with_message(_buffer != nullptr, "缓冲区指针为空");
             return this->_buffer[_size - 1];
@@ -99,7 +99,7 @@ namespace slow_json {
          * 获得缓冲区最后一个字符的引用
          * @return
          */
-        [[nodiscard]] const char &back() const noexcept {
+        [[nodiscard]] const char &back() const SLOW_JSON_NOEXCEPT {
             assert_with_message(_size != 0, "数组为空，无法获取最后一个元素");
             assert_with_message(_buffer != nullptr, "缓冲区指针为空");
             return this->_buffer[_size - 1];
@@ -110,7 +110,7 @@ namespace slow_json {
          * @param dst 被插入的字符串
          * @param length 字符串的长度
          */
-        void append(const char *const dst, std::size_t length) noexcept {
+        void append(const char *const dst, std::size_t length) SLOW_JSON_NOEXCEPT {
             assert_with_message(dst != nullptr, "输入字符串指针为空");
             if (_capacity == 0) {
                 this->reserve(std::max(1ul, length));
@@ -130,7 +130,7 @@ namespace slow_json {
          * 在末尾插入一个字符串
          * @param dst 被插入的字符串
          */
-        void append(const std::string &dst) noexcept {
+        void append(const std::string &dst) SLOW_JSON_NOEXCEPT {
             assert_with_message(!dst.empty() || dst.c_str() != nullptr, "输入std::string无效");
             this->append(dst.c_str(), dst.size());
         }
@@ -139,7 +139,7 @@ namespace slow_json {
          * 在末尾插入一个字符串
          * @param dst 被插入的字符串
          */
-        void append(const std::string_view &dst) noexcept {
+        void append(const std::string_view &dst) SLOW_JSON_NOEXCEPT {
             assert_with_message(!dst.empty() || dst.data() != nullptr, "输入std::string_view无效");
             this->append(dst.data(), dst.size());
         }
@@ -191,7 +191,7 @@ namespace slow_json {
          * 获得当前缓冲区中有效字符的数量
          * @return
          */
-        [[nodiscard]] std::size_t size() const noexcept {
+        [[nodiscard]] std::size_t size() const SLOW_JSON_NOEXCEPT {
             return this->_size;
         }
 
@@ -199,7 +199,7 @@ namespace slow_json {
          * 获得当前缓冲区的最大容量
          * @return
          */
-        [[nodiscard]] std::size_t capacity() const noexcept {
+        [[nodiscard]] std::size_t capacity() const SLOW_JSON_NOEXCEPT {
             return this->_capacity;
         }
 
@@ -207,7 +207,7 @@ namespace slow_json {
          * 获得缓冲区首地址
          * @return
          */
-        [[nodiscard]] char *data() noexcept {
+        [[nodiscard]] char *data() SLOW_JSON_NOEXCEPT {
             return _buffer;
         }
 
@@ -218,7 +218,7 @@ namespace slow_json {
          * @note 该接口不会触发数组动态扩容
          * @param size 修改之后的缓冲区有效数字长度
          */
-        void resize(std::size_t size) noexcept {
+        void resize(std::size_t size) SLOW_JSON_NOEXCEPT {
             assert_with_message(size <= _capacity, "调整大小超出容量，size=%zu，_capacity=%zu", size, _capacity);
             assert_with_message(_buffer != nullptr || size == 0, "缓冲区指针为空且大小非零");
             this->_size = size;
@@ -246,7 +246,7 @@ namespace slow_json {
          * 反正都清空了，正好可以把offset也归零，容量重新上升，减少reserve调用次数
          * @see Buffer::resize
          */
-        void clear() noexcept {
+        void clear() SLOW_JSON_NOEXCEPT {
             assert_with_message(_buffer != nullptr || _size == 0, "缓冲区指针为空且大小非零");
             this->resize(0);
             this->_buffer -= this->_offset;
@@ -258,7 +258,7 @@ namespace slow_json {
          * 获得缓冲区首地址
          * @return
          */
-        [[nodiscard]] char *begin() noexcept {
+        [[nodiscard]] char *begin() SLOW_JSON_NOEXCEPT {
             return _buffer;
         }
 
@@ -266,7 +266,7 @@ namespace slow_json {
          * 获得缓冲区尾地址（最后一个有效元素地址+1）
          * @return
          */
-        [[nodiscard]] char *end() noexcept {
+        [[nodiscard]] char *end() SLOW_JSON_NOEXCEPT {
             return _buffer + _size;
         }
 
@@ -274,7 +274,7 @@ namespace slow_json {
          * 获得缓冲区首地址
          * @return
          */
-        [[nodiscard]] const char *begin() const noexcept {
+        [[nodiscard]] const char *begin() const SLOW_JSON_NOEXCEPT {
             return _buffer;
         }
 
@@ -282,7 +282,7 @@ namespace slow_json {
          * 获得缓冲区尾地址（最后一个有效元素地址+1）
          * @return
          */
-        [[nodiscard]] const char *end() const noexcept {
+        [[nodiscard]] const char *end() const SLOW_JSON_NOEXCEPT {
             return _buffer + _size;
         }
 
@@ -293,7 +293,7 @@ namespace slow_json {
          * @note 该接口不会有数据拷贝的开销，直接返回缓冲区中数据的地址，因此注意对象声明周期问题
          * @return C风格的字符串的首地址
          */
-        const char *c_str() noexcept {
+        const char *c_str() SLOW_JSON_NOEXCEPT {
             assert_with_message(_buffer != nullptr || _size == 0, "缓冲区指针为空且大小非零");
             if (_size == 0) {
                 return "\0";
@@ -307,7 +307,7 @@ namespace slow_json {
          * @details 该接口会发生数据拷贝，得到的字符串是复制后的结果
          * @return std::string格式的字符串
          */
-        std::string string() noexcept {
+        std::string string() SLOW_JSON_NOEXCEPT {
             assert_with_message(_buffer != nullptr || _size == 0, "缓冲区指针为空且大小非零");
             return {_buffer, _size};
         }

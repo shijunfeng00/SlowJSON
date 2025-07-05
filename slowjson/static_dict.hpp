@@ -31,7 +31,7 @@ namespace slow_json {
         constexpr static std::size_t size_v = std::tuple_size_v<std::tuple<Args...>>;
 
         template<std::size_t index = 0, char...chs>
-        constexpr auto &at(StaticString<chs...> &&) const noexcept {
+        constexpr auto &at(StaticString<chs...> &&) const SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<decltype(std::get<index>(*this).first), StaticString<chs...>>) {
                 return std::get<index>(*this).second;
             } else if constexpr (index + 1 < size_v) {
@@ -43,7 +43,7 @@ namespace slow_json {
         }
 
         template<std::size_t index = 0, char...chs>
-        auto &at(StaticString<chs...> &&) noexcept {
+        auto &at(StaticString<chs...> &&) SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<decltype(std::get<index>(*this).first), StaticString<chs...>>) {
                 return std::get<index>(*this).second;
             } else if constexpr (index + 1 < size_v) {
@@ -55,12 +55,12 @@ namespace slow_json {
         }
 
         template<char...chs>
-        constexpr auto &operator[](StaticString<chs...> &&) const noexcept {
+        constexpr auto &operator[](StaticString<chs...> &&) const SLOW_JSON_NOEXCEPT {
             return this->at(StaticString<chs...>());
         }
 
         template<char...chs>
-        auto &operator[](StaticString<chs...> &&) noexcept {
+        auto &operator[](StaticString<chs...> &&) SLOW_JSON_NOEXCEPT {
             return this->at(StaticString<chs...>());
         }
     };

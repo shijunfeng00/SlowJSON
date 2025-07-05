@@ -60,7 +60,7 @@ namespace slow_json::details {
          * @param buffer 输出缓冲区
          * @throws 当_object_ptr为空时触发断言
          */
-        void dump_fn(slow_json::Buffer &buffer) const noexcept {
+        void dump_fn(slow_json::Buffer &buffer) const SLOW_JSON_NOEXCEPT {
             assert_with_message(_object_ptr != nullptr, "对象指针为空");
             _dump_fn(buffer, _object_ptr, _offset);
         }
@@ -148,7 +148,7 @@ namespace slow_json::details {
          */
         template<typename T>
         requires(!std::is_member_pointer_v<T> && std::is_rvalue_reference_v<T &&>)
-        constexpr serializable_wrapper(T &&value) noexcept { // NOLINT(google-explicit-constructor)
+        constexpr serializable_wrapper(T &&value) SLOW_JSON_NOEXCEPT { // NOLINT(google-explicit-constructor)
             using U = std::decay_t<T>;
             constexpr std::size_t align_size = alignof(U);
 
@@ -171,7 +171,7 @@ namespace slow_json::details {
          * @param other 源对象
          * @details 拷贝构造模拟移动语义以避免std::variant中std::vector的初始化问题
          */
-        serializable_wrapper(const serializable_wrapper &other) noexcept
+        serializable_wrapper(const serializable_wrapper &other) SLOW_JSON_NOEXCEPT
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
                   _move_fn(other._move_fn),
@@ -191,7 +191,7 @@ namespace slow_json::details {
          * @return 当前对象的引用
          * @details 清理当前资源，转移源对象的资源，避免重复释放
          */
-        serializable_wrapper& operator=(serializable_wrapper&& other) noexcept {
+        serializable_wrapper& operator=(serializable_wrapper&& other) SLOW_JSON_NOEXCEPT {
             if (this != &other) {
                 // 清理当前对象的资源
                 if (is_heap_allocated()) {
@@ -223,7 +223,7 @@ namespace slow_json::details {
          * @param other 源对象
          * @details 为避免std::variant中std::vector的初始化问题，拷贝构造模拟移动语义。大对象转移指针并置空源指针以防double free，小对象复制缓冲区
          */
-        serializable_wrapper(serializable_wrapper &&other) noexcept
+        serializable_wrapper(serializable_wrapper &&other) SLOW_JSON_NOEXCEPT
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
                   _move_fn(other._move_fn),
@@ -256,7 +256,7 @@ namespace slow_json::details {
          * @param buffer 输出缓冲区
          * @details 调用存储的序列化函数，处理小对象或大对象
          */
-        void dump_fn(slow_json::Buffer &buffer) const noexcept {
+        void dump_fn(slow_json::Buffer &buffer) const SLOW_JSON_NOEXCEPT {
             void *ptr = is_heap_allocated() ? _buffer_ptr : (void *)&_buffer;
             _dump_fn(buffer, ptr);
         }
@@ -265,7 +265,7 @@ namespace slow_json::details {
          * @brief 获取值的指针
          * @return void* 指向值的指针
          */
-        [[nodiscard]] const void *value() const noexcept {
+        [[nodiscard]] const void *value() const SLOW_JSON_NOEXCEPT {
             return is_heap_allocated() ? _buffer_ptr : (void *)&_buffer;
         }
 
@@ -273,7 +273,7 @@ namespace slow_json::details {
          * @brief 获取值的指针
          * @return void* 指向值的指针
          */
-        [[nodiscard]] void *value() noexcept {
+        [[nodiscard]] void *value() SLOW_JSON_NOEXCEPT {
             return is_heap_allocated() ? _buffer_ptr : (void *)&_buffer;
         }
 
@@ -281,7 +281,7 @@ namespace slow_json::details {
          * @brief 获取被存储的原本类型名称，也即构造函数模板参数类型字符串
          * @return std::string_view 类型名称
          */
-        [[nodiscard]] std::string_view type_name() const noexcept {
+        [[nodiscard]] std::string_view type_name() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
             ptr &= CLEAR_MASK;  // 清除低3位
             assert_with_message(ptr % 8 == 0, "指针地址非8对齐");
@@ -293,7 +293,7 @@ namespace slow_json::details {
          * @return ElementType 类型枚举值
          * @details 返回基本类型、列表、字典或根字典的类型
          */
-        [[nodiscard]] ElementType get_value_element_type() const noexcept {
+        [[nodiscard]] ElementType get_value_element_type() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
             return static_cast<ElementType>((ptr & TYPE_MASK) >> 1);
         }
@@ -321,7 +321,7 @@ namespace slow_json::details {
          * @details 根据类型设置类型标志位
          */
         template<typename U>
-        void set_type() noexcept {
+        void set_type() SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
             // 清除原有类型信息
             ptr &= ~TYPE_MASK;
@@ -342,7 +342,7 @@ namespace slow_json::details {
          * @brief 设置堆分配标志
          * @param value 是否为堆分配
          */
-        void set_heap_allocated(bool value) const noexcept {
+        void set_heap_allocated(bool value) const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
             ptr = value ? (ptr | HEAP_MASK) : (ptr & ~HEAP_MASK);
             _type_name = reinterpret_cast<char *>(ptr);
@@ -352,7 +352,7 @@ namespace slow_json::details {
          * @brief 获取堆分配标志
          * @return bool 是否为堆分配
          */
-        [[nodiscard]] bool is_heap_allocated() const noexcept {
+        [[nodiscard]] bool is_heap_allocated() const SLOW_JSON_NOEXCEPT {
             return reinterpret_cast<uintptr_t>(_type_name) & HEAP_MASK;
         }
 
@@ -361,7 +361,7 @@ namespace slow_json::details {
          * @tparam U 值类型
          */
         template<typename U>
-        void initialize_functions() noexcept {
+        void initialize_functions() SLOW_JSON_NOEXCEPT {
             _dump_fn = [](slow_json::Buffer &buffer, void *object) {
                 slow_json::DumpToString<U>::dump(buffer, *static_cast<U *>(object));
             };
@@ -428,7 +428,7 @@ namespace slow_json::details {
          * @param index 索引值
          * @details 将键映射到指定索引
          */
-        void insert(const char* key, std::size_t index) noexcept {
+        void insert(const char* key, std::size_t index) SLOW_JSON_NOEXCEPT {
             index_map[key] = index;
         }
 
@@ -438,7 +438,7 @@ namespace slow_json::details {
          * @return std::size_t 索引值
          * @details 返回键对应的索引值
          */
-        std::size_t at(const char* key) noexcept {
+        std::size_t at(const char* key) SLOW_JSON_NOEXCEPT {
             return index_map[key];
         }
 
@@ -448,7 +448,7 @@ namespace slow_json::details {
          * @return bool 是否包含
          * @details 检查键是否存在于映射中
          */
-        bool contains(const char* key) noexcept {
+        bool contains(const char* key) SLOW_JSON_NOEXCEPT {
             return index_map.contains(key);
         }
 
@@ -456,7 +456,7 @@ namespace slow_json::details {
          * @brief 获取映射大小
          * @return std::size_t 键值对数量
          */
-        [[nodiscard]] std::size_t size() const noexcept {
+        [[nodiscard]] std::size_t size() const SLOW_JSON_NOEXCEPT {
             return index_map.size();
         }
 
@@ -464,7 +464,7 @@ namespace slow_json::details {
          * @brief 检查映射是否为空
          * @return bool 是否为空
          */
-        [[nodiscard]] bool empty() const noexcept {
+        [[nodiscard]] bool empty() const SLOW_JSON_NOEXCEPT {
             return index_map.empty();
         }
     };
@@ -520,7 +520,7 @@ namespace slow_json::details {
          * @param other 源字典
          * @details 移动源字典的数据到新对象
          */
-        dict(dict&& other) noexcept : _type(other._type), _key_to_index(nullptr), _data_ptr(nullptr) {
+        dict(dict&& other) SLOW_JSON_NOEXCEPT : _type(other._type), _key_to_index(nullptr), _data_ptr(nullptr) {
             assert_with_message(
                     (other._type == serializable_wrapper::ROOT_DICT_TYPE && _type == serializable_wrapper::ROOT_DICT_TYPE) ||
                     (other._type != serializable_wrapper::ROOT_DICT_TYPE && _type != serializable_wrapper::ROOT_DICT_TYPE),
@@ -556,7 +556,7 @@ namespace slow_json::details {
          * @return dict& 当前对象的引用
          * @details 清理当前资源，构造新的包装值
          */
-        dict& operator=(serializable_wrapper&& value) noexcept {
+        dict& operator=(serializable_wrapper&& value) SLOW_JSON_NOEXCEPT {
             assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
             _type = value.get_value_element_type();
             *_data_ptr = std::move(value);
@@ -568,7 +568,7 @@ namespace slow_json::details {
          * @param value 序列化包装器列表
          * @return dict& 当前对象的引用
          */
-        dict& operator=(std::vector<serializable_wrapper>&& value) noexcept {
+        dict& operator=(std::vector<serializable_wrapper>&& value) SLOW_JSON_NOEXCEPT {
             assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
             _type = serializable_wrapper::LIST_TYPE;
             *_data_ptr = serializable_wrapper(std::move(value));
@@ -580,7 +580,7 @@ namespace slow_json::details {
          * @param value 字典
          * @return dict& 当前对象的引用
          */
-        dict& operator=(dict&& value) noexcept {
+        dict& operator=(dict&& value) SLOW_JSON_NOEXCEPT {
             if (this != &value) {
                 assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
                 _type = serializable_wrapper::LIST_TYPE;
@@ -595,7 +595,7 @@ namespace slow_json::details {
          * @return bool 是否包含
          * @details 对于根字典，检查键值对；对于嵌套字典，委托给包装值
          */
-        bool contains(const char* key) noexcept {
+        bool contains(const char* key) SLOW_JSON_NOEXCEPT {
             if (!key) {
                 return false;
             }
@@ -613,7 +613,7 @@ namespace slow_json::details {
          * @return bool 是否为空
          * @details 对于根字典，检查键值对数量；对于列表或嵌套字典，检查对应容器
          */
-        bool empty() noexcept {
+        bool empty() SLOW_JSON_NOEXCEPT {
             if (_type == serializable_wrapper::ROOT_DICT_TYPE) {
                 initialize_key_to_index();
                 return _key_to_index->empty();
@@ -729,7 +729,7 @@ namespace slow_json::details {
          * @return std::string_view 类型名称
          * @details 对于根字典，返回固定字符串；其他类型委托给包装值
          */
-        [[nodiscard]] std::string_view type_name() const noexcept {
+        [[nodiscard]] std::string_view type_name() const SLOW_JSON_NOEXCEPT {
             if (_type == serializable_wrapper::ROOT_DICT_TYPE) {
                 return std::string_view{type_name_v<dict>.str};
             }
@@ -786,7 +786,7 @@ namespace slow_json::details {
          * @brief 初始化键到索引映射
          * @details 延迟初始化_key_to_index以提高性能
          */
-        void initialize_key_to_index() noexcept {
+        void initialize_key_to_index() SLOW_JSON_NOEXCEPT {
             if (!_key_to_index && _type == serializable_wrapper::ROOT_DICT_TYPE) {
                 _key_to_index = new key_to_index{};
                 for (std::size_t index = 0; auto& it : _data) {

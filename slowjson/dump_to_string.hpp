@@ -36,7 +36,7 @@ namespace slow_json {
      */
     template<concepts::integer T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<T, char>) {
                 buffer += value;
             } else if constexpr (sizeof(T) == 4) {
@@ -71,7 +71,7 @@ namespace slow_json {
      */
     template<>
     struct DumpToString<bool> : public IDumpToString<DumpToString<bool>> {
-        static void dump_impl(Buffer &buffer, const bool &value) noexcept {
+        static void dump_impl(Buffer &buffer, const bool &value) SLOW_JSON_NOEXCEPT {
             buffer += value ? "true" : "false";
         }
     };
@@ -79,7 +79,7 @@ namespace slow_json {
 
     template<concepts::reference_wrapper T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             DumpToString<typename T::type>::dump(buffer, value.get());
         }
     };
@@ -92,7 +92,7 @@ namespace slow_json {
      */
     template<concepts::floating_point T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             assert_with_message(value != INFINITY, "slowjson暂不支持处理浮点数的inf");
             buffer.try_reserve(buffer.size() + 20);
             char *end = rapidjson::internal::dtoa(value, buffer.end())-1;
@@ -120,7 +120,7 @@ namespace slow_json {
      */
     template<slow_json::concepts::string T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             buffer.push_back('"');
             if constexpr (concepts::static_string<T>) {
                 buffer += value.with_end();
@@ -137,7 +137,7 @@ namespace slow_json {
      */
     template<slow_json::concepts::iterable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             using element_type = std::remove_const_t<std::remove_reference_t<decltype(*std::begin(value))>>;
             buffer.push_back('[');
             for (const auto &it: value) {
@@ -158,7 +158,7 @@ namespace slow_json {
      */
     template<slow_json::concepts::tuple T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             constexpr std::size_t size = std::tuple_size_v<T>;
             [&value, &buffer]<std::size_t...index>(std::index_sequence<index...> &&) {
                 buffer.push_back('[');
@@ -181,7 +181,7 @@ namespace slow_json {
      */
     template<slow_json::concepts::slow_json_static_dict T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             constexpr std::size_t size = T::size_v;
             [&value, &buffer]<std::size_t...index>(std::index_sequence<index...> &&) {
                 buffer.push_back('{');
@@ -208,7 +208,7 @@ namespace slow_json {
 
     template<slow_json::concepts::dict T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             buffer.push_back('{');
             for (const auto &[k, v]: value) {
                 using key_type = std::remove_const_t<std::remove_reference_t<decltype(k)>>;
@@ -228,7 +228,7 @@ namespace slow_json {
 
     template<slow_json::concepts::optional T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<T, std::nullopt_t>) {
                 buffer.append("null");
             } else {
@@ -243,7 +243,7 @@ namespace slow_json {
 
     template<concepts::variant T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             const void*value_ptr=nullptr;
             auto do_func=[&]<std::size_t...index>(std::index_sequence<index...>){
                 using variant=decltype(concepts::details::variant_traits{value});
@@ -269,7 +269,7 @@ namespace slow_json {
 
     template<slow_json::concepts::pair T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             buffer.push_back('[');
             DumpToString<typename T::first_type>::dump(buffer, value.first);
             buffer.push_back(',');
@@ -280,7 +280,7 @@ namespace slow_json {
 
     template<slow_json::concepts::pointer T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<T, std::nullptr_t>) {
                 buffer.append("null");
             } else {
@@ -297,7 +297,7 @@ namespace slow_json {
 
     template<slow_json::concepts::callable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             DumpToString<decltype(value())>::dump(buffer, value());
         };
     };
@@ -306,7 +306,7 @@ namespace slow_json {
 
     template<>
     struct DumpToString<details::serializable_wrapper>:public IDumpToString<DumpToString<details::serializable_wrapper>>{
-        static void dump_impl(Buffer&buffer,const details::serializable_wrapper&object)noexcept{
+        static void dump_impl(Buffer&buffer,const details::serializable_wrapper&object)SLOW_JSON_NOEXCEPT{
             assert_with_message(object._dump_fn,"_fn为空，可能存在悬空引用问题");
             object.dump_fn(buffer);
         }
@@ -314,14 +314,14 @@ namespace slow_json {
 
     template<>
     struct DumpToString<details::field_wrapper>:public IDumpToString<DumpToString<details::field_wrapper>>{
-        static void dump_impl(Buffer&buffer,const details::field_wrapper&object)noexcept{
+        static void dump_impl(Buffer&buffer,const details::field_wrapper&object)SLOW_JSON_NOEXCEPT{
             object.dump_fn(buffer);
         }
     };
 
     template<>
     struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
-        static void dump_impl(Buffer&buffer,const dict&object)noexcept{
+        static void dump_impl(Buffer&buffer,const dict&object)SLOW_JSON_NOEXCEPT{
             buffer+='{';
             for(const auto&[k,v]:object._data){
                 DumpToString<const char*>::dump(buffer,k);
@@ -339,7 +339,7 @@ namespace slow_json {
 
     template<>
     struct DumpToString<details::pair>:public IDumpToString<DumpToString<details::pair>>{
-        static void dump_impl(Buffer&buffer,const details::pair&object)noexcept{
+        static void dump_impl(Buffer&buffer,const details::pair&object)SLOW_JSON_NOEXCEPT{
             DumpToString<const char*>::dump(buffer,object._key);
             buffer+=':';
             DumpToString<details::serializable_wrapper>::dump(buffer,object._value);
@@ -353,7 +353,7 @@ namespace slow_json {
      */
     template<slow_json::concepts::serializable T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&it:config._data){
@@ -410,7 +410,7 @@ namespace slow_json {
 
     template<slow_json::concepts::cv_point T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             buffer.push_back('[');
             DumpToString<decltype(value.x)>::dump(buffer, value.x);
             buffer.push_back(',');
@@ -421,7 +421,7 @@ namespace slow_json {
 
     template<slow_json::concepts::eigen_point T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             buffer.push_back('[');
             DumpToString<decltype(value.x())>::dump(buffer, value.x());
             buffer.push_back(',');
@@ -446,7 +446,7 @@ namespace slow_json {
      */
     template<concepts::serializable_oop T>
     struct DumpToString<T> : public IDumpToString<DumpToString<T>> {
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             DumpToString<decltype(value.get_config())>::dump(buffer, value.get_config());
         }
     };

@@ -236,14 +236,14 @@ namespace slow_json {
      */
     template<concepts::serializable_oop T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) noexcept {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
             value.from_config(dict);
         }
     };
 
     template<concepts::optional T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) noexcept {
+        static void load_impl(T &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
             typename T::value_type object;
             if (!dict.empty()) {
                 LoadFromDict<typename T::value_type>::load(object, dict);

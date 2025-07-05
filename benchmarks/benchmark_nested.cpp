@@ -115,7 +115,6 @@ namespace nested {
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             doc.Accept(writer);
-            doc.Clear();
             buffer.GetString();
         }
         auto end = std::chrono::high_resolution_clock::now();
