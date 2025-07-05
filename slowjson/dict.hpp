@@ -453,7 +453,30 @@ namespace slow_json::details {
                 void *value_ptr = ((serializable_wrapper *) _data)->value();
                 return *((T *) value_ptr);
             }
+            std::unordered_map<const char*, element> as_dict() {
+                assert_with_message(is_dict(), "非字典类型，无法转换为 std::unordered_map");
+                auto* data = (serializable_wrapper*)_data;
+                auto& d = *(dict*)data->value();
+                std::unordered_map<const char*, element> result;
+                for (auto& p : d._data) {
+                    auto key_fn = [](pair& p) { return reinterpret_cast<_pair*>(&p)->_key; };
+                    auto value_fn = [](pair& p) { return &reinterpret_cast<_pair*>(&p)->_value; };
+                    result.emplace(key_fn(p), element{value_fn(p)});
+                }
+                return result;
+            }
 
+            std::vector<element> as_list() {
+                assert_with_message(is_array(), "非列表类型，无法转换为 std::vector");
+                auto* data = (serializable_wrapper*)_data;
+                auto& list_data = *(std::vector<serializable_wrapper>*)data->value();
+                std::vector<element> result;
+                result.reserve(list_data.size());
+                for (auto& item : list_data) {
+                    result.emplace_back(&item);
+                }
+                return result;
+            }
             bool is_fundamental(){
                 auto*data=(serializable_wrapper*)_data;
                 return data->get_value_element_type()==serializable_wrapper::FUNDAMENTAL_TYPE;
