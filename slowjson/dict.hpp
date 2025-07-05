@@ -191,7 +191,7 @@ namespace slow_json::details {
          * @return 当前对象的引用
          * @details 清理当前资源，转移源对象的资源，避免重复释放
          */
-        serializable_wrapper& operator=(serializable_wrapper&& other) SLOW_JSON_NOEXCEPT {
+        serializable_wrapper& operator=(serializable_wrapper&& other) noexcept {
             if (this != &other) {
                 // 清理当前对象的资源
                 if (is_heap_allocated()) {
@@ -223,7 +223,7 @@ namespace slow_json::details {
          * @param other 源对象
          * @details 为避免std::variant中std::vector的初始化问题，拷贝构造模拟移动语义。大对象转移指针并置空源指针以防double free，小对象复制缓冲区
          */
-        serializable_wrapper(serializable_wrapper &&other) SLOW_JSON_NOEXCEPT
+        serializable_wrapper(serializable_wrapper &&other) noexcept
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
                   _move_fn(other._move_fn),
@@ -389,7 +389,6 @@ namespace slow_json::details {
     class key_to_index {
     private:
         std::map<std::string_view, std::size_t, std::less<>> index_map;
-        std::size_t next_index = 0;
 
     public:
         /**
@@ -492,7 +491,10 @@ namespace slow_json::details {
          * @param data 初始化列表，包含键值对
          * @details 使用移动语义将键值对列表存储到字典中
          */
-        dict(std::initializer_list<pair>&& data) : _type(serializable_wrapper::ROOT_DICT_TYPE), _key_to_index(nullptr){
+        dict(std::initializer_list<pair>&& data) :
+        _type(serializable_wrapper::ROOT_DICT_TYPE),
+        _key_to_index(nullptr),
+        _data_ptr{nullptr}{
             new (&_data) std::vector<pair>(data);
         }
 
@@ -505,7 +507,7 @@ namespace slow_json::details {
          */
         template<typename... K, typename... V>
         constexpr dict(std::pair<K, V>&&... data)  // NOLINT(google-explicit-constructor)
-                : _type(serializable_wrapper::ROOT_DICT_TYPE), _key_to_index(nullptr) {
+                : _type(serializable_wrapper::ROOT_DICT_TYPE), _key_to_index(nullptr),_data_ptr{nullptr} {
             new (&_data) std::vector<pair>{{pair{std::move(data.first), std::move(data.second)}...}};
         }
 
@@ -520,7 +522,7 @@ namespace slow_json::details {
          * @param other 源字典
          * @details 移动源字典的数据到新对象
          */
-        dict(dict&& other) SLOW_JSON_NOEXCEPT : _type(other._type), _key_to_index(nullptr), _data_ptr(nullptr) {
+        dict(dict&& other) noexcept: _type(other._type), _key_to_index(nullptr), _data_ptr(nullptr) {
             assert_with_message(
                     (other._type == serializable_wrapper::ROOT_DICT_TYPE && _type == serializable_wrapper::ROOT_DICT_TYPE) ||
                     (other._type != serializable_wrapper::ROOT_DICT_TYPE && _type != serializable_wrapper::ROOT_DICT_TYPE),
@@ -778,7 +780,9 @@ namespace slow_json::details {
          * @param data 序列化包装器指针
          * @details 仅用于内部构造嵌套字典或值
          */
-        dict(serializable_wrapper* data) : _type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE), _key_to_index(nullptr) {
+        dict(serializable_wrapper* data) :
+        _type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE),
+        _key_to_index(nullptr) {  // NOLINT(google-explicit-constructor)
             _data_ptr = data;
         }
 

@@ -34,6 +34,21 @@ namespace slow_json {
         }
 
         /**
+         * 析构函数
+         */
+        ~Buffer() {
+#ifdef debug_slow_json_buffer_print
+            printf("<buffer.hpp>销毁缓存:%p\n", this->_buffer);
+#endif
+            delete[] (this->_buffer - this->_offset);
+        }
+
+        friend std::ostream &operator<<(std::ostream &os, Buffer &buffer) {
+            assert_with_message(buffer._buffer != nullptr || buffer._size == 0, "缓冲区指针为空且大小非零");
+            os << buffer.c_str();
+            return os;
+        }
+        /**
          * 根据下标访问元素
          * @param index 数组下标
          * @return
@@ -149,7 +164,7 @@ namespace slow_json {
          * @note 被插入的字符串必须包含结束符'\0'，否则将到导致不可预料的结果
          * @param dst 被插入的字符串
          */
-        void append(const char *const dst) {
+        void append(const char *const dst) SLOW_JSON_NOEXCEPT {
             assert_with_message(dst != nullptr, "输入C字符串指针为空");
             this->append(dst, strlen(dst));
         }
@@ -158,7 +173,7 @@ namespace slow_json {
          * 在末尾插入一个字符串
          * @param dst 被插入的字符串
          */
-        void operator+=(const std::string &dst) {
+        void operator+=(const std::string &dst) SLOW_JSON_NOEXCEPT{
             this->append(dst);
         }
 
@@ -166,7 +181,7 @@ namespace slow_json {
          * 在末尾插入一个字符串
          * @param dst 被插入的字符串
          */
-        void operator+=(const std::string_view &dst) {
+        void operator+=(const std::string_view &dst) SLOW_JSON_NOEXCEPT{
             this->append(dst);
         }
 
@@ -175,7 +190,7 @@ namespace slow_json {
          * @note 被插入的字符串必须包含结束符'\0'，否则将到导致不可预料的结果
          * @param dst 被插入的字符串
          */
-        void operator+=(const char *const dst) {
+        void operator+=(const char *const dst) SLOW_JSON_NOEXCEPT{
             this->append(dst);
         }
 
@@ -183,7 +198,7 @@ namespace slow_json {
          * 在末尾插入一个字符
          * @param ch 被插入的字符
          */
-        void operator+=(char ch) {
+        void operator+=(char ch) SLOW_JSON_NOEXCEPT{
             this->append(&ch, 1);
         }
 
@@ -231,7 +246,7 @@ namespace slow_json {
          *          这样做是为了减少reserve调用次数，毕竟每次都要copy数据
          * @param target_capacity 修改之后的缓冲区最大大小
          */
-        void try_reserve(std::size_t target_capacity) {
+        void try_reserve(std::size_t target_capacity) SLOW_JSON_NOEXCEPT{
             assert_with_message(target_capacity < (1ULL << 48), "目标容量过大，target_capacity=%zu", target_capacity);
             if (target_capacity > _capacity) {
                 std::size_t new_capacity = std::max(1ul, _capacity);
@@ -319,7 +334,7 @@ namespace slow_json {
          *          当需要调用reserve进行内存重新分配的时候，才会真正的删除数据，并将偏移量归0
          * @param n_begin_pos 需要删除的字符的数量
          */
-        void erase(std::size_t n_begin_pos) {
+        void erase(std::size_t n_begin_pos) SLOW_JSON_NOEXCEPT{
             assert_with_message(n_begin_pos <= _size, "删除字符数超出缓冲区大小，n_begin_pos=%zu，_size=%zu", n_begin_pos, _size);
             assert_with_message(_buffer != nullptr || _size == 0, "缓冲区指针为空且大小非零");
             _buffer = _buffer + n_begin_pos;
@@ -332,27 +347,11 @@ namespace slow_json {
         }
 
         /**
-         * 析构函数
-         */
-        ~Buffer() {
-#ifdef debug_slow_json_buffer_print
-            printf("<buffer.hpp>销毁缓存:%p\n", this->_buffer);
-#endif
-            delete[] (this->_buffer - this->_offset);
-        }
-
-        friend std::ostream &operator<<(std::ostream &os, Buffer &buffer) {
-            assert_with_message(buffer._buffer != nullptr || buffer._size == 0, "缓冲区指针为空且大小非零");
-            os << buffer.c_str();
-            return os;
-        }
-
-        /**
          * @brief 从缓冲区末尾分配一块未初始化的内存（默认1字节对齐）
          * @param size 需要分配的字节数
          * @return 指向分配内存起始位置的指针
          */
-        void* allocate(std::size_t size) {
+        void* allocate(std::size_t size) SLOW_JSON_NOEXCEPT{
             return allocate(size, 1); // 默认1字节对齐
         }
 
@@ -363,7 +362,7 @@ namespace slow_json {
          * @return 指向分配内存起始位置的指针
          * @note 对齐值必须是2的幂（如1,2,4,8,16,...）
          */
-        void* allocate(std::size_t size, std::size_t alignment) {
+        void* allocate(std::size_t size, std::size_t alignment) SLOW_JSON_NOEXCEPT{
             assert_with_message((alignment & (alignment - 1)) == 0,
                                 "对齐值必须是2的幂, alignment=%zu", alignment);
 
@@ -400,7 +399,7 @@ namespace slow_json {
          * @details 这个函数实际上并没有考虑容量变小的情况（虽然应该也是正常的）
          * @param capacity 修改之后的缓冲区最大容量
          */
-        void reserve(std::size_t capacity) {
+        void reserve(std::size_t capacity) SLOW_JSON_NOEXCEPT{
             assert_with_message(_capacity < capacity, "数组容量变小，_capacity=%zu，capacity=%zu", _capacity, capacity);
             assert_with_message(capacity < (1ULL << 48), "新容量过大，capacity=%zu", capacity);
             auto new_buffer = new char[capacity + 1]; // 多一位出来是用来放结束符号'\0'的
