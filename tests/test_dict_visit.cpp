@@ -67,8 +67,8 @@ void test_dict_visit() {
     assert_with_message(std::abs(dict["dd"]["d2"]["123"].cast<double>() - 2.12) < 1e-6, "dd.d2.123 应为 2.12");
 
     // 测试类型名称
-    assert_with_message(dict["x"].type_name() == "slow_json::helper::dict", "x 类型应为 dict");
-    assert_with_message(dict["list"].type_name() == "std::vector<slow_json::helper::serializable_wrapper>", "list 类型应为 std::vector<serializable_wrapper>");
+    assert_with_message(dict["x"].type_name() == "slow_json::details::dict", "x 类型应为 dict");
+    assert_with_message(dict["list"].type_name() == "std::vector<slow_json::details::serializable_wrapper>", "list 类型应为 std::vector<serializable_wrapper>");
     assert_with_message(dict["y"].type_name() == "const char*", "y 类型应为 const char*");
     assert_with_message(dict["z"].type_name() == "float", "z 类型应为 float");
 

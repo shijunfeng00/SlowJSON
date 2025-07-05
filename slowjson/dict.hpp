@@ -11,7 +11,7 @@
 #include <map>
 #include "load_from_dict_interface.hpp"
 
-namespace slow_json::helper {
+namespace slow_json::details {
     struct pair;
     struct dict;
     struct serializable_wrapper;
@@ -99,8 +99,8 @@ namespace slow_json::helper {
         };
 
     public:
-        friend struct DumpToString<helper::serializable_wrapper>;
-        friend struct LoadFromDict<helper::serializable_wrapper>;
+        friend struct DumpToString<details::serializable_wrapper>;
+        friend struct LoadFromDict<details::serializable_wrapper>;
 
         /**
          * @brief 构造函数，绑定任意可序列化值（复制构造）
@@ -664,8 +664,8 @@ namespace slow_json::helper {
 
 }
 namespace slow_json{
-    using helper::pair;
-    using helper::dict;
-    using list=std::vector<helper::serializable_wrapper>;
+    using details::pair;
+    using details::dict;
+    using list=std::vector<details::serializable_wrapper>;
 }
 #endif // SLOWJSON_DICT_HPP

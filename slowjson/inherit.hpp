@@ -9,7 +9,7 @@
 
 namespace slow_json {
     //此处只适用于inherit，不建议用户亲自调用，可能会带来一些意想不到的情况
-    namespace helper{
+    namespace details{
 
         /**
          * 合并两个slow_json::dict，返回一个包含两个slow_json::dict中所有健值对的新的slow_json::dict对象
@@ -87,7 +87,7 @@ namespace slow_json {
         if constexpr(std::is_void_v<SuperClass>){
             return subclass_info;
         }else {
-            return slow_json::helper::merge(SuperClass::get_config(), subclass_info);
+            return slow_json::details::merge(SuperClass::get_config(), subclass_info);
         }
     }
 
@@ -101,7 +101,7 @@ namespace slow_json {
     template<typename SuperClass, typename T>
     requires std::is_same_v<T, slow_json::dict>
     inline constexpr auto inherit(T&&subclass_info) {
-        return slow_json::helper::merge(SuperClass::get_config(), std::move(subclass_info));
+        return slow_json::details::merge(SuperClass::get_config(), std::move(subclass_info));
     }
 }
 #endif //SLOWJSON_MERGER_HPP

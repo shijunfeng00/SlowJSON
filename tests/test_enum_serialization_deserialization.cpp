@@ -27,7 +27,7 @@ void test_enum_serialization_deserialization() {
 
     printf("run %s\n", __PRETTY_FUNCTION__);
 
-    Color p = slow_json::string2enum<Color>("BLACK");
+    Color p = slow_json::details::string2enum<Color>("BLACK");
 
     assert_with_message(std::string_view{slow_json::type_name_v<decltype(p)>.str} == "Color",
                         "slow_json::string2enum返回值类型名称不对");

@@ -124,10 +124,10 @@ namespace slow_json {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&it:config._data){
-                    auto value_ptr=static_cast<const helper::field_wrapper*>(it._value.value());
+                    auto value_ptr=static_cast<const details::field_wrapper*>(it._value.value());
                     if(value_ptr!=nullptr){
                         // 目前只考虑在get_config中用于自定义class对象的反序列化
-                        auto&field_value=*((helper::field_wrapper*)value_ptr);
+                        auto&field_value=*((details::field_wrapper*)value_ptr);
                         field_value._object_ptr=&value;
                         field_value.load_fn(dict[it._key]);
                     }else{
@@ -141,7 +141,7 @@ namespace slow_json {
                 auto handle_pair = [&value, &dict](const auto &pair) {
                     auto &[field_name, field_ptr] = pair;
                     auto &field_value = value.*field_ptr;
-                    using field_t = decltype(concepts::helper::match_field_type(field_ptr));
+                    using field_t = decltype(concepts::details::match_field_type(field_ptr));
                     LoadFromDict<field_t>::load(field_value, dict[field_name.with_end().str]);
                 };
                 [&config, &handle_pair]<std::size_t...index>(std::index_sequence<index...> &&) {
@@ -200,7 +200,7 @@ namespace slow_json {
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             const char *enum_str = dict.value()->GetString();
-            value = slow_json::string2enum<T>(enum_str);
+            value = details::string2enum<T>(enum_str);
         }
     };
 

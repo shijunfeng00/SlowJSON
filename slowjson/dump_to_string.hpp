@@ -246,7 +246,7 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const T &value) noexcept {
             const void*value_ptr=nullptr;
             auto do_func=[&]<std::size_t...index>(std::index_sequence<index...>){
-                using variant=decltype(concepts::helper::variant_traits{value});
+                using variant=decltype(concepts::details::variant_traits{value});
                 ([&]() {
                     // 遍历所有可能的类型
                     using maybe_type=typename variant::template maybe_types<index>;
@@ -262,7 +262,7 @@ namespace slow_json {
             if(value.valueless_by_exception()){
                 buffer.append("null"); //空值
             }else {
-                do_func(std::make_index_sequence<decltype(concepts::helper::variant_traits{value})::size_v>());
+                do_func(std::make_index_sequence<decltype(concepts::details::variant_traits{value})::size_v>());
             }
         }
     };
@@ -305,16 +305,16 @@ namespace slow_json {
 
 
     template<>
-    struct DumpToString<helper::serializable_wrapper>:public IDumpToString<DumpToString<helper::serializable_wrapper>>{
-        static void dump_impl(Buffer&buffer,const helper::serializable_wrapper&object)noexcept{
+    struct DumpToString<details::serializable_wrapper>:public IDumpToString<DumpToString<details::serializable_wrapper>>{
+        static void dump_impl(Buffer&buffer,const details::serializable_wrapper&object)noexcept{
             assert_with_message(object._dump_fn,"_fn为空，可能存在悬空引用问题");
             object.dump_fn(buffer);
         }
     };
 
     template<>
-    struct DumpToString<helper::field_wrapper>:public IDumpToString<DumpToString<helper::field_wrapper>>{
-        static void dump_impl(Buffer&buffer,const helper::field_wrapper&object)noexcept{
+    struct DumpToString<details::field_wrapper>:public IDumpToString<DumpToString<details::field_wrapper>>{
+        static void dump_impl(Buffer&buffer,const details::field_wrapper&object)noexcept{
             object.dump_fn(buffer);
         }
     };
@@ -326,7 +326,7 @@ namespace slow_json {
             for(const auto&[k,v]:object._data){
                 DumpToString<const char*>::dump(buffer,k);
                 buffer+=':';
-                DumpToString<helper::serializable_wrapper>::dump(buffer,v);
+                DumpToString<details::serializable_wrapper>::dump(buffer,v);
                 buffer+=',';
             }
             if(buffer.back()==','){
@@ -338,11 +338,11 @@ namespace slow_json {
     };
 
     template<>
-    struct DumpToString<helper::pair>:public IDumpToString<DumpToString<helper::pair>>{
-        static void dump_impl(Buffer&buffer,const helper::pair&object)noexcept{
+    struct DumpToString<details::pair>:public IDumpToString<DumpToString<details::pair>>{
+        static void dump_impl(Buffer&buffer,const details::pair&object)noexcept{
             DumpToString<const char*>::dump(buffer,object._key);
             buffer+=':';
-            DumpToString<helper::serializable_wrapper>::dump(buffer,object._value);
+            DumpToString<details::serializable_wrapper>::dump(buffer,object._value);
         }
     };
 
@@ -357,7 +357,7 @@ namespace slow_json {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&it:config._data){
-                    if(auto value_ptr=static_cast<const helper::field_wrapper*>(it._value.value());value_ptr!=nullptr){
+                    if(auto value_ptr=static_cast<const details::field_wrapper*>(it._value.value());value_ptr!=nullptr){
                         value_ptr->_object_ptr=&value;
                     }
                 };
