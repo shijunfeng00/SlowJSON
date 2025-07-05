@@ -141,4 +141,9 @@ void run_dict_serialization_deserialization_inherit();
  */
 void test_dict_visit();
 
+/**
+ * 测试slow_json::dict的数据动态访问接口的正确性
+ */
+void test_dict_modify();
+
 #endif //SLOWJSON_RUN_TEST_HPP

@@ -40,6 +40,7 @@ int main() {
     test_macro_serialization();
     run_dict_serialization_deserialization_inherit();
     test_dict_visit();
+    test_dict_modify();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }
