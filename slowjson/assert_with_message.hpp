@@ -13,10 +13,22 @@
 #include <stdexcept>
 #include <string>
 
+#ifdef BUILD_TEST_UNIT //测试模式下，把断言变为异常
+#define SLOW_JSON_NOEXCEPT
+#define SLOW_JSON_ASSERT_AS_EXCEPTION
+#else
+#ifdef SLOW_JSON_ASSERT_AS_EXCEPTIONN
+#define SLOW_JSON_NOEXCEPT
+#else
+#define SLOW_JSON_NOEXCEPT noexcept
+#endif
+#endif
+
+
 #ifdef NDEBUG
 #define assert_with_message(...)
 #else
-#ifdef BUILD_TEST_UNIT
+#ifdef SLOW_JSON_ASSERT_AS_EXCEPTION
 #define assert_with_message(expr, message, ...) {                                                                                                                      \
        if(!(expr)){                                                                                                                                                  \
            char str[1000]={0};                                                                                                                                          \
