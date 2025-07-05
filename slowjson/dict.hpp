@@ -33,7 +33,7 @@ namespace slow_json::helper {
          * @details 通过lambda捕获成员指针，生成序列化和反序列化的闭包
          */
         template<typename Class, typename Field>
-        constexpr field_wrapper(Field Class::*field_ptr)
+        constexpr field_wrapper(Field Class::*field_ptr)  // NOLINT(google-explicit-constructor)
                 : _object_ptr(nullptr),
                   _offset((std::size_t) (&((Class * )nullptr->*field_ptr))),
                   _dump_fn([](
@@ -59,7 +59,7 @@ namespace slow_json::helper {
          * @param buffer 输出缓冲区
          * @throws 当_object_ptr为空时触发断言
          */
-        void dump_fn(slow_json::Buffer &buffer) const {
+        void dump_fn(slow_json::Buffer &buffer) const noexcept{
             assert_with_message(_object_ptr != nullptr, "对象指针为空");
             _dump_fn(buffer, _object_ptr, _offset);
         }
@@ -69,7 +69,7 @@ namespace slow_json::helper {
          * @param dict 输入字典
          * @throws 当_object_ptr为空时触发断言
          */
-        void load_fn(const slow_json::dynamic_dict &dict) const {
+        void load_fn(const slow_json::dynamic_dict &dict) const{
             assert_with_message(_object_ptr != nullptr, "对象指针为空");
             _load_fn(_object_ptr, _offset, dict);
         }
@@ -81,16 +81,23 @@ namespace slow_json::helper {
         void (*_load_fn)(const void *, std::size_t, const slow_json::dynamic_dict &); ///< 反序列化函数指针
     };
 
-    /**
-     * @brief 可序列化值包装器
-     * @details 封装任意可序列化值，提供统一的dump接口，优化小对象存储以减少堆分配
-     */
     struct serializable_wrapper {
-        enum type{
-            FUNDAMENTAL_TYPE,
-            LIST_TYPE,
-            DICT_TYPE
+        /**
+         * @brief 对dict元素访问提供支持
+         * @details 从dict解析出原本的c++对象需要一定的类型信息的支持，需要知道serializable_wraprer内部存储的是原始c++对象，列表还是字典
+         * @note 每一种类型的定义如下：
+         * - 原始c++对象就是非dict非pair的无slow_json封装的对象
+         * - 列表是std::vector<serializable_wrapper>
+         * - 字典是slow_json::dict
+         */
+
+
+        enum ElementType {
+            FUNDAMENTAL_TYPE = 0,  // 00
+            LIST_TYPE = 1,         // 01
+            DICT_TYPE = 2          // 10
         };
+
     public:
         friend struct DumpToString<helper::serializable_wrapper>;
         friend struct LoadFromDict<helper::serializable_wrapper>;
@@ -106,6 +113,7 @@ namespace slow_json::helper {
         serializable_wrapper(const T &value):serializable_wrapper{field_wrapper{value}} { // NOLINT(google-explicit-constructor)
 
         }
+
         /**
          * @brief 构造函数，绑定任意可序列化值（复制构造）
          * @tparam T 值类型，需满足可序列化要求且非成员指针
@@ -117,7 +125,10 @@ namespace slow_json::helper {
         constexpr serializable_wrapper(const T &value) { // NOLINT(google-explicit-constructor)
             using U = std::decay_t<decltype(value)>;
             constexpr std::size_t align_size = alignof(U);
+            // 设置原始类型名称并添加类型信息
             _type_name = slow_json::type_name_v<U>.str;
+            set_type<U>();
+            // 根据大小决定存储方式
             if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
                 new(&_buffer) U(value);
                 set_heap_allocated(false);
@@ -136,11 +147,14 @@ namespace slow_json::helper {
          */
         template<typename T>
         requires(!std::is_member_pointer_v<T> && std::is_rvalue_reference_v<T &&>)
-        constexpr serializable_wrapper(T &&value) noexcept {
+        constexpr serializable_wrapper(T &&value) noexcept {  // NOLINT(google-explicit-constructor)
             using U = std::decay_t<T>;
             constexpr std::size_t align_size = alignof(U);
+
+            // 设置原始类型名称并添加类型信息
             _type_name = slow_json::type_name_v<U>.str;
-            assert_with_message(((uintptr_t) _type_name) % 8 == 0, "指针地址非8对齐");
+            set_type<U>();
+
             if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
                 new(&_buffer) U(std::forward<T>(value));
                 set_heap_allocated(false);
@@ -156,7 +170,7 @@ namespace slow_json::helper {
          * @param other 源对象
          * @details 拷贝构造模拟移动语义以避免std::variant中std::vector的初始化问题
          */
-        serializable_wrapper(const serializable_wrapper &other)
+        serializable_wrapper(const serializable_wrapper &other) noexcept
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
                   _move_fn(other._move_fn),
@@ -168,6 +182,33 @@ namespace slow_json::helper {
             } else {
                 other._move_fn(&_buffer, const_cast<void *>(static_cast<const void *>(&other._buffer)));
             }
+        }
+
+        serializable_wrapper& operator=(serializable_wrapper&& other) noexcept {
+            if (this != &other) {
+                // 清理当前对象的资源
+                if (is_heap_allocated()) {
+                    if (_buffer_ptr) {
+                        _deleter(_buffer_ptr, true);
+                    }
+                } else {
+                    _deleter(&_buffer, false);
+                }
+
+                // 转移 other 的资源
+                _type_name = other._type_name;
+                _dump_fn = other._dump_fn;
+                _move_fn = other._move_fn;
+                _deleter = other._deleter;
+                set_heap_allocated(other.is_heap_allocated());
+                if (is_heap_allocated()) {
+                    _buffer_ptr = other._buffer_ptr;
+                    other._buffer_ptr = nullptr;
+                } else {
+                    other._move_fn(&_buffer, const_cast<void*>(static_cast<const void*>(&other._buffer)));
+                }
+            }
+            return *this;
         }
 
         /**
@@ -208,7 +249,7 @@ namespace slow_json::helper {
          * @param buffer 输出缓冲区
          * @details 调用存储的序列化函数，处理小对象或大对象
          */
-        void dump_fn(slow_json::Buffer &buffer) const {
+        void dump_fn(slow_json::Buffer &buffer) const noexcept{
             void *ptr = is_heap_allocated() ? _buffer_ptr : (void *) &_buffer;
             _dump_fn(buffer, ptr);
         }
@@ -217,38 +258,101 @@ namespace slow_json::helper {
          * @brief 获取值的指针
          * @return void* 指向值的指针
          */
-        [[nodiscard]] const void *value()const{
+        [[nodiscard]] const void *value()const noexcept{
             return is_heap_allocated() ? _buffer_ptr : (void *) &_buffer;
         }
 
         /**
-         * @brief 获取值的类型名称
+         * @brief 获取值的指针
+         * @return void* 指向值的指针
+         */
+        [[nodiscard]] void *value()noexcept{
+            return is_heap_allocated() ? _buffer_ptr : (void *) &_buffer;
+        }
+
+        /**
+         * @brief 获取被存储的原本类型名称，也即构造函数模板参数类型字符串
          * @return std::string_view 类型名称
          */
         [[nodiscard]] std::string_view type_name() const noexcept {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
-            ptr &= ~static_cast<uintptr_t>(1);
+            ptr &= CLEAR_MASK;  // 清除低3位
             assert_with_message(ptr % 8 == 0, "指针地址非8对齐");
             return std::string_view{reinterpret_cast<const char *>(ptr)};
         }
 
+        /**
+         * @brief 获取存储的类型信息，基本类型，列表，字典，用于解析的时候进行判断
+         * @return ElementType 类型枚举值
+         */
+        [[nodiscard]] ElementType get_value_element_type() const noexcept {
+            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+            return static_cast<ElementType>((ptr & TYPE_MASK) >> 1);
+        }
+
     private:
         static constexpr std::size_t buffer_size = 24; ///< 小对象缓冲区大小
+
+        // 位掩码定义
+        static constexpr uintptr_t HEAP_MASK = 0x1;    // 最低位 - 堆分配标志
+        static constexpr uintptr_t TYPE_MASK = 0x6;    // 中间两位 - 类型信息 (0b0110)
+        static constexpr uintptr_t CLEAR_MASK = ~0x7;  // 清除低3位的掩码
+
         union {
             mutable void *_buffer_ptr; ///< 大对象指针，指向堆内存
             alignas(8) char _buffer[buffer_size]; ///< 小对象缓冲区
         };
-        mutable const char *_type_name; ///< 类型名称，带堆分配标志
+        mutable const char *_type_name; ///< 类型名称，内存地址8对齐，末尾3位用来存储'是否堆分配和类型'信息
         void (*_dump_fn)(slow_json::Buffer &, void *)=nullptr; ///< 序列化函数指针
         void (*_move_fn)(void *, void *)=nullptr; ///< 移动/复制函数指针
         void (*_deleter)(void *, bool)=nullptr; ///< 析构函数指针
+
+        /**
+         * @brief 设置类型信息
+         * @tparam U 实际存储的类型
+         */
+        template<typename U>
+        void set_type() noexcept{
+            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+            // 清除原有类型信息
+            ptr &= ~TYPE_MASK;
+
+            // 设置新类型信息
+            if constexpr (std::is_same_v<U, std::vector<serializable_wrapper>>) {
+                ptr |= (LIST_TYPE << 1);
+            } else if constexpr (std::is_same_v<U, dict>) {
+                ptr |= (DICT_TYPE << 1);
+            } else {
+                ptr |= (FUNDAMENTAL_TYPE << 1);
+            }
+
+            _type_name = reinterpret_cast<const char*>(ptr);
+        }
+
+        /**
+         * @brief 设置堆分配标志
+         * @param value 是否为堆分配
+         */
+        void set_heap_allocated(bool value) const noexcept {
+            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+            ptr = value ? (ptr | HEAP_MASK) : (ptr & ~HEAP_MASK);
+            _type_name = reinterpret_cast<char *>(ptr);
+        }
+
+        /**
+         * @brief 获取堆分配标志
+         * @return bool 是否为堆分配
+         */
+        [[nodiscard]] bool is_heap_allocated() const noexcept {
+            return reinterpret_cast<uintptr_t>(_type_name) & HEAP_MASK;
+        }
 
         /**
          * @brief 初始化序列化、移动和析构函数
          * @tparam U 值类型
          */
         template<typename U>
-        void initialize_functions() {
+        void initialize_functions()noexcept{
             _dump_fn = [](slow_json::Buffer &buffer, void *object) {
                 slow_json::DumpToString<U>::dump(buffer, *static_cast<U *>(object));
             };
@@ -271,25 +375,42 @@ namespace slow_json::helper {
                 }
             };
         }
+    };
 
-        /**
-         * @brief 设置堆分配标志
-         * @param value 是否为堆分配
-         */
-        void set_heap_allocated(bool value) const noexcept {
-            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
-            ptr = value ? (ptr | 1) : (ptr & ~static_cast<uintptr_t>(1));
-            _type_name = reinterpret_cast<char *>(ptr);
+    class key_to_index {
+    private:
+        std::map<std::string_view, std::size_t, std::less<>> index_map;
+        std::size_t next_index = 0;
+    public:
+        // 构造函数
+        key_to_index() = default;
+        key_to_index(const key_to_index&) = delete;
+        key_to_index& operator=(const key_to_index&) = delete;
+        key_to_index(key_to_index&&) = default;
+        key_to_index& operator=(key_to_index&&) = delete;
+
+        void insert(const char* key,std::size_t index)noexcept{
+            index_map[key]=index;
         }
 
-        /**
-         * @brief 获取堆分配标志
-         * @return bool 是否为堆分配
-         */
-        [[nodiscard]] bool is_heap_allocated() const noexcept {
-            return reinterpret_cast<uintptr_t>(_type_name) & 1;
+        std::size_t at(const char*key)noexcept{
+            return index_map[key];
+        }
+
+        bool contains(const char*key)noexcept{
+            return index_map.contains(key);
+        }
+
+        [[nodiscard]] std::size_t size() const noexcept {
+            return index_map.size();
+        }
+
+        [[nodiscard]] bool empty() const noexcept {
+            return index_map.empty();
         }
     };
+
+
 
     /**
     * @brief 动态字典结构，用于存储键值对集合
@@ -300,12 +421,117 @@ namespace slow_json::helper {
         friend struct LoadFromDict<dict>;
         friend struct DumpToString<dict>;
         friend dict merge(dict&&, dict&&);
+
+
+        struct element{
+            explicit element(serializable_wrapper*data):_data{data}{}
+
+            template<typename T>
+            bool as_type(){
+                auto*data=(serializable_wrapper*)_data;
+                const auto expect_type_name=data->type_name();
+                const auto type=data->get_value_element_type();
+                if(type!=serializable_wrapper::FUNDAMENTAL_TYPE){
+                    return false;
+                }
+                constexpr auto type_name=std::string_view{type_name_v<T>.str};
+                return type_name==expect_type_name;
+            }
+
+            template<typename T>
+            T&cast(){
+                auto*data=(serializable_wrapper*)_data;
+                const auto expect_type_name=data->type_name();
+                const auto type=data->get_value_element_type();
+                assert_with_message(type==serializable_wrapper::FUNDAMENTAL_TYPE,"非基础类型，无法转换");
+                constexpr auto type_name=std::string_view{type_name_v<T>.str};
+                assert_with_message(type_name==expect_type_name,"类型不正确，预期为`%s`，实际传入为`%s`",
+                                    expect_type_name.data(),type_name.data());
+                void *value_ptr = ((serializable_wrapper *) _data)->value();
+                return *((T *) value_ptr);
+            }
+
+            bool is_fundamental(){
+                auto*data=(serializable_wrapper*)_data;
+                return data->get_value_element_type()==serializable_wrapper::FUNDAMENTAL_TYPE;
+            }
+            bool is_array(){
+                auto*data=(serializable_wrapper*)_data;
+                return data->get_value_element_type()==serializable_wrapper::LIST_TYPE;
+            }
+            bool is_dict(){
+                auto*data=(serializable_wrapper*)_data;
+                return data->get_value_element_type()==serializable_wrapper::DICT_TYPE;
+            }
+            bool contains(const char*key){
+                assert_with_message(this->is_dict(),"非字典类型，无法通过键访问数据");
+                auto*data=(serializable_wrapper*)_data;
+                return ((dict*)data->value())->contains(key);
+            }
+            std::size_t size(){
+                assert_with_message(this->is_array(),"非列表类型，无法通过整数下标访问数据");
+                auto*data=(serializable_wrapper*)_data;
+                return ((std::vector<serializable_wrapper>*)data)->size();
+            }
+            bool empty(){
+                assert_with_message(this->is_array() || this->is_dict(),"非列表或字典类型，无法调用该函数");
+                if(this->is_array()) {
+                    auto *data = (serializable_wrapper *) _data;
+                    return ((std::vector<serializable_wrapper> *) data)->empty();
+                }else{
+                    auto*data=(serializable_wrapper*)_data;
+                    return ((dict*)data->value())->empty();
+                }
+            }
+            /**
+             * 实际存储的真正数据的类型的字符串
+             * @return
+             */
+            [[nodiscard]] std::string_view type_name()const noexcept{
+                auto*data=(serializable_wrapper*)_data;
+                return data->type_name();
+            }
+            
+            element operator[](std::size_t index){
+                auto*data=(serializable_wrapper*)_data;
+                auto type=data->get_value_element_type();
+                assert_with_message(type==serializable_wrapper::LIST_TYPE,"非列表类型，无法通过整数下标访问数据");
+                assert_with_message(index<this->size(),"数组越界访问:%zu >= %zu",index,this->size());
+                auto&list_data=*(std::vector<serializable_wrapper>*)data->value();
+                return element{&list_data[index]};
+            }
+            template<typename T, typename = std::enable_if_t<std::is_pointer_v<T> && !std::is_integral_v<T>>>
+            element operator[](T key){
+                auto*data=(serializable_wrapper*)_data;
+                auto type=data->get_value_element_type();
+                assert_with_message(type==serializable_wrapper::DICT_TYPE,"非字典类型，无法通过键访问数据");
+                return ((dict*)data->value())->operator[](key);
+            }
+            element&operator=(serializable_wrapper&&value)noexcept{
+                auto&data=*(serializable_wrapper*)_data;
+                data=std::move(value);
+                return *this;
+            }
+            element&operator=(std::vector<serializable_wrapper>&&value)noexcept{
+                auto&data=*(serializable_wrapper*)_data;
+                data=serializable_wrapper{std::move(value)};
+                return *this;
+            }
+            element&operator=(dict&&value)noexcept{
+                auto&data=*(serializable_wrapper*)_data;
+                data=serializable_wrapper{std::move(value)};
+                return *this;
+            }
+        private:
+            void*_data;
+        };
+
         /**
          * @brief 构造函数，使用初始化列表构造字典
          * @param data 初始化列表，包含键值对
          * @details 使用移动语义将键值对列表存储到字典中
          */
-        dict(std::initializer_list<pair>&& data) : _data(data) {}
+        dict(std::initializer_list<pair>&& data) : _data(data),_key_to_index{nullptr} {}
 
         /**
          * @brief 构造函数，使用可变参数模板构造字典，兼容基于std::pair的老接口
@@ -315,8 +541,9 @@ namespace slow_json::helper {
          * @details 将参数包中的键值对转换为pair对象并存储
          */
         template<typename... K, typename... V>
-        constexpr dict(std::pair<K, V>&&... data)
-                : _data{{pair{std::move(data.first), std::move(data.second)}...}} {}
+        constexpr dict(std::pair<K, V>&&... data)  // NOLINT(google-explicit-constructor)
+                :_data{{pair{std::move(data.first), std::move(data.second)}...}},
+                 _key_to_index{nullptr} {}
 
         /**
          * @brief 拷贝构造函数（禁用）
@@ -329,9 +556,67 @@ namespace slow_json::helper {
          * @param d 源字典
          * @details 移动源字典的键值对数据到新对象
          */
-        dict(dict&& d) : _data{std::move(d._data)} {}
+        dict(dict&& d)  noexcept : _data{std::move(d._data)},_key_to_index{d._key_to_index} {
+            d._key_to_index=nullptr;
+        }
+        /**
+         * 析构函数
+         */
+        ~dict(){
+            delete _key_to_index;
+        }
+
+        bool contains(const char*key)noexcept{
+            if(!key){
+                return false;
+            }
+            auto key_fn=[](pair&p){
+                return *((const char**)&p);
+            };
+            if(!_key_to_index){
+                _key_to_index=new key_to_index{};
+                for(std::size_t index=0;auto&it:_data){
+                    _key_to_index->insert(key_fn(it),index++);
+                }
+            }
+            return _key_to_index->contains(key);
+        }
+
+        bool empty()noexcept{
+            auto key_fn=[](pair&p){
+                return *((const char**)&p);
+            };
+            if(!_key_to_index){
+                _key_to_index=new key_to_index{};
+                for(std::size_t index=0;auto&it:_data){
+                    _key_to_index->insert(key_fn(it),index++);
+                }
+            }
+            return _key_to_index->empty();
+        }
+
+        element operator[](const char*key){
+            assert_with_message(key,"key为空指针");
+            auto key_fn=[](pair&p){
+                return *((const char**)&p);
+            };
+            auto value_fn=[](pair&p){
+                return (serializable_wrapper*)(sizeof(const char*)+(uintptr_t)&p);
+            };
+            if(!_key_to_index){
+                _key_to_index=new key_to_index{};
+                for(std::size_t index=0;auto&it:_data){
+                    _key_to_index->insert(key_fn(it),index++);
+                }
+            }
+            assert_with_message(_key_to_index->contains(key),"字典中不存在该字段:'%s'",key);
+            auto*value_ptr=value_fn(_data[_key_to_index->at(key)]);
+            return element{value_ptr};
+        }
+
     private:
         std::vector<pair> _data; ///< 存储键值对的向量
+        key_to_index*_key_to_index;
     };
 
     /**
