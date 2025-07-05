@@ -10,7 +10,7 @@
 #include "concetps.hpp"
 #include "dump_to_string_interface.hpp"
 #include "enum.hpp"
-#include <iostream>
+#include <vector>
 #include <atomic>
 
 namespace slow_json {
@@ -31,6 +31,8 @@ namespace slow_json {
     */
     class dynamic_dict {
     public:
+        friend struct LoadFromDict<dynamic_dict>;
+        friend struct DumpToString<dynamic_dict>;
         dynamic_dict() : _shared{nullptr}, _value{nullptr} {}
         /**
          * @brief 从 JSON 字符串创建一个 dynamic_dict 对象（根对象）
@@ -147,18 +149,6 @@ namespace slow_json {
                 other._value = nullptr;
             }
             return *this;
-        }
-        /**
-         * @brief 从 rapidjson::Value 创建一个 dynamic_dict 对象（包装），不拥有内存
-         * @param value rapidjson::Value 的引用
-         * @return dynamic_dict 类型的包装对象
-         * @note 通过此方法创建的对象不会管理内存，调用修改接口可能导致未定义行为
-         */
-        static dynamic_dict wrap(const rapidjson::Value &value) {
-            auto allocator = new rapidjson::MemoryPoolAllocator<>(1024 * 64);
-            // 创建共享数据，但标记不拥有内存（不释放底层内存）
-            auto *shared = new SharedData(const_cast<rapidjson::Value *>(&value), allocator, false);
-            return {shared, const_cast<rapidjson::Value *>(&value)};
         }
 
         /**
@@ -325,14 +315,31 @@ namespace slow_json {
             return _value->HasMember(key.data());
         }
 
-        /**
-         * @brief 获取原始的 rapidjson::Value 指针
-         * @return 指向 rapidjson::Value 的常量指针
-         */
-        [[nodiscard]] const rapidjson::Value *value() const noexcept {
-            return _value;
+        [[nodiscard]] std::unordered_map<std::string_view,dynamic_dict>as_dict()const noexcept{
+            assert_with_message(this->is_object(),"非字典类型无法调用该接口");
+            std::unordered_map<std::string_view,dynamic_dict>result;
+            for(auto&[k,v]:_value->GetObject()){
+                result.try_emplace(k.GetString(),dynamic_dict{_shared, &v});
+            };
+            return result;
         }
 
+        /**
+         * 将对象转换为一个列表
+         * @return 转化为std::vector的对象 ，每一个元素为JSON列表中的一个元素（item）
+         */
+        [[nodiscard]] std::vector<dynamic_dict>as_list()const noexcept{
+            assert_with_message(this->is_array(),"非字典类型无法调用该接口");
+            std::vector<dynamic_dict>result;
+            for(auto&v:_value->GetArray()){
+                result.emplace_back(dynamic_dict{_shared, &v});
+            };
+            return result;
+        }
+        /**
+         * 将对象转换为一个字典
+         * @return 转化为std::unordered_map的对象 ，每一个元素为JSON列表中的一个元素（item）
+         */
         /**
          * @brief 判断 JSON 是否为数组
          * @return 如果为数组返回 true，否则返回 false
@@ -433,7 +440,7 @@ namespace slow_json {
         static void dump_impl(Buffer &buffer, const dynamic_dict &value) {
             rapidjson::StringBuffer rapid_buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(rapid_buffer);
-            value.value()->Accept(writer);
+            value._value->Accept(writer);
             buffer += rapid_buffer.GetString();
         }
     };
