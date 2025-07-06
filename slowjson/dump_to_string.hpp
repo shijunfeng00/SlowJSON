@@ -6,7 +6,7 @@
 #define SLOWJSON_DUMP_TO_STRING_HPP
 
 #include "dump_to_string_interface.hpp"
-#include "concetps.hpp"
+#include "concepts.hpp"
 #include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"

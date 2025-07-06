@@ -5,7 +5,7 @@
 #ifndef SLOWJSON_MERGER_HPP
 #define SLOWJSON_MERGER_HPP
 
-#include "concetps.hpp"
+#include "concepts.hpp"
 
 namespace slow_json {
     //此处只适用于inherit，不建议用户亲自调用，可能会带来一些意想不到的情况

@@ -5,7 +5,7 @@
 #ifndef SLOWJSON_OSTREAM_HPP
 #define SLOWJSON_OSTREAM_HPP
 #include <iostream>
-#include "concetps.hpp"
+#include "concepts.hpp"
 #include "supported.hpp"
 #include "dump.hpp"
 namespace slow_json::ostream {
