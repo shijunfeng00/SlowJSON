@@ -296,11 +296,16 @@ namespace slow_json {
          * @return 数组中元素的个数
          */
         [[nodiscard]] std::size_t size() const {
-            assert_with_message(_value->IsArray(),
+            assert_with_message(_value->IsArray() || _value->IsObject(),
                                 "试图把JSON当作数组访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",
                                 _json_str.c_str());
-            const auto &array = _value->GetArray();
-            return array.Size();
+            if(_value->IsArray()){
+                const auto &array = _value->GetArray();
+                return array.Size();
+            }else{
+                const auto &object = _value->GetObject();
+                return object.MemberCount();
+            }
         }
 
         /**
