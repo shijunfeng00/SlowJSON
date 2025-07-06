@@ -336,10 +336,46 @@ namespace slow_json {
             };
             return result;
         }
+
+        [[nodiscatd]] auto type()const SLOW_JSON_NOEXCEPT{
+            return _value->GetType();
+        }
+
         /**
-         * 将对象转换为一个字典
-         * @return 转化为std::unordered_map的对象 ，每一个元素为JSON列表中的一个元素（item）
+         * @brief 检查 JSON 值是否可以转换为指定类型 T
+         * @tparam T 目标类型
+         * @return 如果可以转换则返回 true，否则返回 false
          */
+        template<typename T>
+        bool as_type() const SLOW_JSON_NOEXCEPT {
+            if constexpr (std::is_same_v<T, int>) {
+                return _value->IsInt();
+            } else if constexpr (std::is_same_v<T, int64_t>) {
+                return _value->IsInt64();
+            } else if constexpr (std::is_same_v<T, uint64_t>) {
+                return _value->IsUint64();
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                return _value->IsInt() && _value->GetInt() >= std::numeric_limits<int16_t>::min() &&
+                       _value->GetInt() <= std::numeric_limits<int16_t>::max();
+            } else if constexpr (std::is_same_v<T, float>) {
+                return _value->IsNumber();
+            } else if constexpr (std::is_same_v<T, double>) {
+                return _value->IsNumber();
+            } else if constexpr (std::is_same_v<T, char>) {
+                return _value->IsString() && _value->GetStringLength() == 1;
+            } else if constexpr (std::is_same_v<T, const char*>) {
+                return _value->IsString();
+            } else if constexpr (std::is_same_v<T, std::string_view>) {
+                return _value->IsString();
+            } else {
+                assert_with_message(false, "不支持的类型");
+                return false;
+            }
+        }
+
+        [[nodiscard]] bool is_fundamental()const SLOW_JSON_NOEXCEPT{
+            return ! (_value->IsNull() || _value->IsArray() || _value->IsObject());
+        }
         /**
          * @brief 判断 JSON 是否为数组
          * @return 如果为数组返回 true，否则返回 false
