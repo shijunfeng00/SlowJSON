@@ -22,7 +22,7 @@ namespace slow_json {
     struct ISerializable;
 }
 namespace slow_json::concepts {
-    namespace helper {
+    namespace details {
 
         /**
          * 匹配std::variant的辅助类，顺便获得模板参数列表，用于序列化
@@ -156,7 +156,7 @@ namespace slow_json::concepts {
 
     template<typename T>
     concept array=requires(T &&t){
-        helper::get_array_size(t);
+        details::get_array_size(t);
     };
 
     /**
@@ -194,7 +194,7 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept static_string=requires(T t){
-        helper::match_static_string(t);
+        details::match_static_string(t);
     };
 
     /**
@@ -203,7 +203,7 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept reference_wrapper=requires(T t){
-        helper::match_reference_wrapper(t);
+        details::match_reference_wrapper(t);
     };
 
     /**
@@ -247,7 +247,7 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept tuple=requires(T t){
-        helper::match_tuple(t);
+        details::match_tuple(t);
         std::tuple_size<T>::value;
     };
 
@@ -257,7 +257,7 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept slow_json_static_dict=requires(T t){
-        helper::match_static_dict(t);
+        details::match_static_dict(t);
     };
 
     /**
@@ -277,7 +277,7 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept optional=requires(T t){
-        helper::match_optional(t);
+        details::match_optional(t);
     } || std::is_same_v<T, std::nullopt_t>;
 
     /**
@@ -285,7 +285,7 @@ namespace slow_json::concepts {
      * @tparam T
      */
     template<typename T>
-    concept variant=requires(T t){helper::variant_traits{t};};
+    concept variant=requires(T t){details::variant_traits{t};};
 
     /**
      * 指针类型，包括C指针和三种C++智能指针
@@ -293,12 +293,12 @@ namespace slow_json::concepts {
      */
     template<typename T>
     concept pointer=(std::is_pointer_v<T> ||
-                     std::is_same_v<T, std::nullptr_t> || requires(T t){ helper::match_shared_ptr(t); } ||
-                     requires(T t){ helper::match_unique_ptr(t); } || requires(T t){ helper::match_weak_ptr(t); }) &&
+                     std::is_same_v<T, std::nullptr_t> || requires(T t){ details::match_shared_ptr(t); } ||
+                     requires(T t){ details::match_unique_ptr(t); } || requires(T t){ details::match_weak_ptr(t); }) &&
                     !string<T>;
 
     template<typename T>
-    concept atomic=requires(T t){ helper::match_atomic(t);};
+    concept atomic=requires(T t){ details::match_atomic(t);};
 
     /**
      * 支持序列化的类型，通常为用户自定义类型，且正确实现了get_config方法

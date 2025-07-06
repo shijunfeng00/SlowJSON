@@ -9,6 +9,12 @@ using namespace slow_json::static_string_literals;
 void test_dict_dumps() {
     printf("run %s\n", __PRETTY_FUNCTION__);
     slow_json::Buffer buffer(1000);
+    slow_json::dict empty_dict;
+    slow_json::dumps(buffer,empty_dict);
+    assert_with_message(buffer.string()=="{}","空字典序列化结果应该为'{}'");
+    buffer.clear();
+
+
     slow_json::dict dict{
             std::pair{"test", 123},
             std::pair{"name", "shijunfeng"},

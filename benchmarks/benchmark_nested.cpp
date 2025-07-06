@@ -57,7 +57,7 @@ namespace nested {
                             {"age", 19}
                         }},
                         {"contact", {
-                            {"emails", std::vector{"a@b.com", "c@d.com"}}, //这里有歧义
+                            {"emails", {"a@b.com", "c@d.com"}}, //这里有歧义
                             {"address", {
                                 {"country", "China"},
                                 {"city", "Chengdu"}
@@ -82,9 +82,9 @@ namespace nested {
     inline void benchmark_rapidjson() {
         auto start = std::chrono::high_resolution_clock::now();
         rapidjson::Document doc;
-        doc.SetObject();
         auto &allocator = doc.GetAllocator();
         for (int i = 0; i < ITERATIONS; ++i) {
+            doc.SetObject();
             rapidjson::Value user(rapidjson::kObjectType);
             {
                 rapidjson::Value basic(rapidjson::kObjectType);
@@ -115,7 +115,6 @@ namespace nested {
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             doc.Accept(writer);
-            doc.Clear();
             buffer.GetString();
         }
         auto end = std::chrono::high_resolution_clock::now();

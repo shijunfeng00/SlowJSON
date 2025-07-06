@@ -21,7 +21,7 @@ namespace slow_json {
          * 将对象序列化为JSON
          * @return
          */
-        [[nodiscard]] virtual slow_json::dict get_config() const noexcept = 0;
+        [[nodiscard]] virtual slow_json::dict get_config() const SLOW_JSON_NOEXCEPT = 0;
 
         /**
          * 从JSON中反序列化对象

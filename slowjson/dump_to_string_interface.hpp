@@ -30,7 +30,7 @@ namespace slow_json {
     template<typename T>
     struct DumpToString : public IDumpToString<DumpToString<T>> {
         static constexpr bool not_supported_flag = true; //如果某个类型匹配到了这个偏特化，则说明该类型是不被支持的
-        static void dump_impl(Buffer &buffer, const T &value) noexcept {
+        static void dump_impl(Buffer &buffer, const T &value) SLOW_JSON_NOEXCEPT {
             assert_with_message(SLOW_JSON_SUPPORTED,
                                 "无法将类型为'%s'的对象正确转换为字符串，找不到对应的DumpToString偏特化类",
                                 type_name_v<T>.str);

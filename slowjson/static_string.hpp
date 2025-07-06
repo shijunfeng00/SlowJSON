@@ -8,6 +8,7 @@
 #include<type_traits>
 #include<utility>
 #include<string_view>
+#include "assert_with_message.hpp"
 
 namespace slow_json {
     /**
@@ -18,14 +19,14 @@ namespace slow_json {
     template<char...chs>
     struct StaticString {
         /// 静态字符串数组。
-        alignas(4) constexpr static const char str[] = {chs...};
+        alignas(8) constexpr static const char str[] = {chs...};
 
         /**
          * @brief 将 StaticString 转换为 C 风格字符串。
          *
          * @return const char* C 风格字符串。
          */
-        constexpr operator const char *() const noexcept {
+        constexpr operator const char *() const SLOW_JSON_NOEXCEPT {
             return str;
         }
 
@@ -39,7 +40,7 @@ namespace slow_json {
             return StaticString<chs..., chs2...>{};
         }
 
-        constexpr static StaticString<chs..., '\0'> with_end() noexcept {
+        constexpr static StaticString<chs..., '\0'> with_end() SLOW_JSON_NOEXCEPT {
             return StaticString<chs..., '\0'>{};
         }
 

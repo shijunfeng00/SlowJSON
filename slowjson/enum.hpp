@@ -9,7 +9,7 @@
 #include<array>
 #include "concetps.hpp"
 #include <unordered_map>
-namespace slow_json {
+namespace slow_json::details {
 
     /**
      * 获得枚举变量字符串名称的辅助类型
@@ -90,7 +90,7 @@ namespace slow_json {
     static T string2enum(const char *enum_str) {
         static std::unordered_map<std::string_view, T> mp = []() {
             std::unordered_map<std::string_view, T> mp;
-            constexpr auto enum_list = slow_json::enum_name_list<T>();
+            constexpr auto enum_list = enum_name_list<T>();
             for (int i = 0; i < std::size(enum_list); i++) {
                 mp[enum_list[i]] = static_cast<T>(i);
             }
@@ -99,6 +99,9 @@ namespace slow_json {
         assert_with_message(mp.contains(enum_str), "字符串转换enum失败，没有这个值");
         return mp[enum_str];
     }
-
+}
+namespace slow_json{
+    using slow_json::details::enum2string;
+    using slow_json::details::enum2string;
 }
 #endif //SLOWJSON_ENUM_HPP
