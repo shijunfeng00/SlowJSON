@@ -91,7 +91,7 @@ void test_dict_visit() {
 
     // 测试空字典
     slow_json::dict empty_dict;
-    assert_with_message(empty_dict.empty(), "空字典应为空");
+    assert_with_message(empty_dict.size()==0, "空字典应为空");
     assert_with_message(!empty_dict.contains("any"), "空字典不应包含任何键");
 
     // 测试访问不存在的键
