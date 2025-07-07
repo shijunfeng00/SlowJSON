@@ -41,6 +41,7 @@ int main() {
     run_dict_serialization_deserialization_inherit();
     test_dict_visit();
     test_dict_modify();
+    test_integer_dumps();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

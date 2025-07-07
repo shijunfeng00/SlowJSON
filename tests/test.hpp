@@ -146,4 +146,9 @@ void test_dict_visit();
  */
 void test_dict_modify();
 
+/** 
+ * 测试整数序列化的正确性，尤其是边界条件，不同类型整数等
+ */
+void test_integer_dumps();
+
 #endif //SLOWJSON_RUN_TEST_HPP
