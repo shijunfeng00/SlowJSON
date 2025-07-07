@@ -1,3 +1,5 @@
+#ifndef SLOWJSON_VISIT_HPP
+#define SLOWJSON_VISIT_HPP
 #include "concepts.hpp"
 namespace slow_json{
     namespace details{
@@ -22,7 +24,6 @@ namespace slow_json{
             (std::is_invocable_v<Fn, Args> && ...)
     )
     void visit(Dict&& dict, Fn&& fn) {
-        std::cout<<"type:"<< type_name_v<Dict> <<std::endl;
         // 如果没有显式提供任何类型参数，则使用默认类型列表
         if constexpr (sizeof...(Args) == 0) {
             // 递归调用自身，传入默认类型 int, double, const char*
@@ -47,3 +48,4 @@ namespace slow_json{
         }
     }
 }
+#endif
