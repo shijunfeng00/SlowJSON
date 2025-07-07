@@ -372,6 +372,8 @@ namespace slow_json {
                 return _value->IsString();
             } else if constexpr (std::is_same_v<T, std::string_view>) {
                 return _value->IsString();
+            }else if constexpr (std::is_same_v<T, std::string>) {
+                return _value->IsString();
             } else {
                 assert_with_message(false, "不支持的类型");
                 return false;
