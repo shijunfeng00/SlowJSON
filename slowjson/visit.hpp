@@ -18,14 +18,15 @@ namespace slow_json{
             typename Fn
     >
     requires (
-    concepts::is_contains_v<std::remove_reference_t<Dict>, slow_json::details::dict, slow_json::dynamic_dict>
-    && (std::is_invocable_v<Fn, Args> && ...)
+    concepts::is_contains_v<std::remove_const_t<std::remove_reference_t<Dict>>, slow_json::details::dict, slow_json::dynamic_dict> &&
+            (std::is_invocable_v<Fn, Args> && ...)
     )
     void visit(Dict&& dict, Fn&& fn) {
+        std::cout<<"type:"<< type_name_v<Dict> <<std::endl;
         // 如果没有显式提供任何类型参数，则使用默认类型列表
         if constexpr (sizeof...(Args) == 0) {
             // 递归调用自身，传入默认类型 int, double, const char*
-            return visit<int, double, const char*>(
+            return visit<int64_t, double, std::string>(
                     std::forward<Dict>(dict),
                     std::forward<Fn>(fn)
             );
