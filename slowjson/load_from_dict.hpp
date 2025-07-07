@@ -9,6 +9,8 @@
 #include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
+#include "visit.hpp"
+
 namespace slow_json {
     template<concepts::fundamental T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
@@ -231,7 +233,7 @@ namespace slow_json {
     };
 
     /**
-     * 用户有自己的想法，根据get_config传入一个slow_json::dynamic_dict对象，用户自己来完成解析
+     * 根据get_config传入一个slow_json::dynamic_dict对象，提供成员属性指针和名称，据此来完成解析
      * @tparam T
      */
     template<concepts::serializable_oop T>
@@ -251,6 +253,64 @@ namespace slow_json {
             }
         }
     };
+
+
+    /**
+     * @brief 特化 LoadFromDict 用于从 dynamic_dict 反序列化到 slow_json::dict
+     * @details 提供从 dynamic_dict 构造 slow_json::dict 的实现，处理嵌套字典结构。
+     *          由于与 serializable_wrapper 存在相互依赖，当前定义为前向声明，后续计划拆分为 hpp/tpp 文件解决依赖问题。
+     */
+    template<>
+    struct LoadFromDict<slow_json::dict>:public ILoadFromDict<LoadFromDict<slow_json::dict>>{
+        static void load_impl(slow_json::dict &value, const slow_json::dynamic_dict &dict);
+    };
+
+    /**
+     * @brief 特化 LoadFromDict 用于从 dynamic_dict 反序列化到 details::serializable_wrapper
+     * @details 支持基本类型、字典和列表的反序列化，存储到 serializable_wrapper。
+     *          使用 visit 模板处理基本类型，递归处理嵌套结构。
+     */
+    template<>
+    struct LoadFromDict<details::serializable_wrapper>:public ILoadFromDict<LoadFromDict<details::serializable_wrapper>>{
+        static void load_impl(details::serializable_wrapper &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
+            if (dict.is_fundamental()) {
+                visit(dict, [&value](auto &&v) {
+                    value = v; 
+                });
+            } else if (dict.is_dict()) {
+                // 处理嵌套字典
+                details::dict d;
+                LoadFromDict<details::dict>::load(d, dict); // 递归解析字典
+                value = std::move(d);
+            } else if (dict.is_list()) {
+                // 处理数组类型
+                std::vector<details::serializable_wrapper> list;
+                list.reserve(dict.as_list().size()); // 预分配容量以优化性能
+                for (auto &v : dict.as_list()) {
+                    details::serializable_wrapper wrapper{nullptr}; 
+                    LoadFromDict<details::serializable_wrapper>::load(wrapper, v); // 递归解析元素
+                    list.emplace_back(std::move(wrapper));
+                }
+                value = std::move(list);
+            }
+        }
+    };
+
+    void LoadFromDict<slow_json::dict>::load_impl(dict &value, const dynamic_dict &dict) {
+         if (dict.is_dict()) {
+            // 处理字典类型
+            std::vector<details::pair> data;
+            data.reserve(dict.as_dict().size()); // 预分配容量以优化性能
+            for (auto &[k, v] : dict.as_dict()) {
+                // 调试输出键
+                details::serializable_wrapper wrapper{nullptr}; 
+                LoadFromDict<details::serializable_wrapper>::load(wrapper, v); // 递归解析值
+                details::pair p{k.data(), std::move(wrapper)}; // 构造键值对
+                data.emplace_back(std::move(p)); 
+            }
+            value._data = std::move(data); // 移动到目标 dict
+        }
+    }
 
 }
 #endif //SLOWJSON_LOAD_FROM_DICT_HPP
