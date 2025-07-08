@@ -15,7 +15,7 @@ namespace slow_json {
     template<concepts::fundamental T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const dynamic_dict &dict) {
-            const rapidjson::Value *v = dict._value;
+            const rapidjson::Value *v = dict.value();
             // 布尔类型
             if constexpr (std::is_same_v<T, bool>) {
                 assert_with_message(v->IsBool(), "期望 JSON 为布尔类型");
@@ -63,15 +63,15 @@ namespace slow_json {
     template<concepts::string T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(!dict._value->IsNull(), "试图将空对象解析为%s", type_name_v<T>.str);
+            assert_with_message(!dict.value()->IsNull(), "试图将空对象解析为%s", type_name_v<T>.str);
             if constexpr (std::is_same_v<T, const char *>) {
-                const char *data = dict._value->GetString();
+                const char *data = dict.value()->GetString();
                 std::size_t size = strlen(data);
                 char *data_cp = new char[size + 1];
                 memcpy(data_cp, data, size + 1);
                 value = data_cp;
             } else {
-                value = dict._value->GetString();
+                value = dict.value()->GetString();
             }
         }
     };

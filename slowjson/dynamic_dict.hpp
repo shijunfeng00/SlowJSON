@@ -342,8 +342,20 @@ namespace slow_json {
             return result;
         }
 
-        [[nodiscatd]] auto type()const SLOW_JSON_NOEXCEPT{
+        /**
+         * 返回rapidjsond维护的json对象对应的type
+         * @return
+         */
+        auto type()const SLOW_JSON_NOEXCEPT{
             return _value->GetType();
+        }
+
+        /**
+         * 获得底层rapidjson维护的json的指针
+         * @return
+         */
+        const rapidjson::Value *value()const SLOW_JSON_NOEXCEPT{
+            return this->_value;
         }
 
         /**
@@ -352,7 +364,7 @@ namespace slow_json {
          * @return 如果可以转换则返回 true，否则返回 false
          */
         template<typename T>
-        bool as_type() const SLOW_JSON_NOEXCEPT {
+        [[nodiscard]] bool as_type() const SLOW_JSON_NOEXCEPT {
             if constexpr (std::is_same_v<T, int>) {
                 return _value->IsInt();
             } else if constexpr (std::is_same_v<T, int64_t>) {
