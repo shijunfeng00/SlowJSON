@@ -488,7 +488,8 @@ namespace slow_json::details {
         dict(std::initializer_list<pair>&& data) :
                 _type(serializable_wrapper::ROOT_DICT_TYPE),
                 _key_to_index(nullptr),
-                _data_ptr{nullptr}{
+                _data_ptr{nullptr},
+                _copied{false}{
             new (&_data) std::vector<pair>(data);
         }
 
@@ -501,7 +502,10 @@ namespace slow_json::details {
          */
         template<typename... K, typename... V>
         constexpr dict(std::pair<K, V>&&... data)  // NOLINT(google-explicit-constructor)
-                : _type(serializable_wrapper::ROOT_DICT_TYPE), _key_to_index(nullptr),_data_ptr{nullptr} {
+                : _type(serializable_wrapper::ROOT_DICT_TYPE),
+                _key_to_index(nullptr),
+                _data_ptr{nullptr},
+                _copied{false} {
             new (&_data) std::vector<pair>{{pair{std::move(data.first), std::move(data.second)}...}};
         }
 
@@ -516,7 +520,11 @@ namespace slow_json::details {
          * @param other 源字典
          * @details 移动源字典的数据到新对象
          */
-        dict(dict&& other) noexcept: _type(other._type), _key_to_index(nullptr), _data_ptr(nullptr) {
+        dict(dict&& other) noexcept:
+        _type(other._type),
+        _key_to_index(nullptr),
+        _data_ptr(nullptr),
+        _copied{other._copied} {
             assert_with_message(
                     (other._type == serializable_wrapper::ROOT_DICT_TYPE && _type == serializable_wrapper::ROOT_DICT_TYPE) ||
                     (other._type != serializable_wrapper::ROOT_DICT_TYPE && _type != serializable_wrapper::ROOT_DICT_TYPE),
@@ -541,14 +549,14 @@ namespace slow_json::details {
          */
         ~dict() {
             if (_type == serializable_wrapper::ROOT_DICT_TYPE) {
-                _data.~vector();
-                delete _key_to_index;
                 if(_copied) {
-                    for (const auto &it: _data) {
-                        const char *key = _pair_key_fn(it);
-                        delete key;
+                    for (auto &it: _data) {
+                        delete[] reinterpret_cast<_pair*>(&it)->_key;
+                        reinterpret_cast<_pair*>(&it)->_key=nullptr;
                     }
                 }
+                _data.~vector();
+                delete _key_to_index;
             }
         }
 
@@ -562,6 +570,7 @@ namespace slow_json::details {
             assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
             _type = value.get_value_element_type();
             *_data_ptr = std::move(value);
+            _copied=false;
             return *this;
         }
 
@@ -574,6 +583,7 @@ namespace slow_json::details {
             assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
             _type = serializable_wrapper::LIST_TYPE;
             *_data_ptr = serializable_wrapper(std::move(value));
+            _copied=false;
             return *this;
         }
 
@@ -582,11 +592,12 @@ namespace slow_json::details {
          * @param value 字典
          * @return dict& 当前对象的引用
          */
-        dict& operator=(dict&& value) SLOW_JSON_NOEXCEPT {
-            if (this != &value) {
+        dict& operator=(dict&& other) SLOW_JSON_NOEXCEPT {
+            if (this != &other) {
                 assert_with_message(_type != serializable_wrapper::ROOT_DICT_TYPE,"根字典对象不允许此操作");
                 _type = serializable_wrapper::LIST_TYPE;
-                *_data_ptr = serializable_wrapper(std::move(value));
+                _copied=other._copied;
+                *_data_ptr = serializable_wrapper(std::move(other));
                 return *this;
             }
             return *this;
@@ -780,16 +791,16 @@ namespace slow_json::details {
             }
             return result;
         }
-        void copy_key(){
-            assert_with_message(_type==serializable_wrapper::ROOT_DICT_TYPE,"不正确的类型");
-            for(const auto&it:_data){
-                const char*key=_pair_key_fn(it);
-                auto size=strlen(key)+1;
-                char*key_cp=new char[size];
-                memcpy(key_cp,key,size);
-                key=key_cp;
-                _copied=true;
+        void copy_key() {
+            assert_with_message(_type == serializable_wrapper::ROOT_DICT_TYPE, "不正确的类型");
+            for (auto& it : _data) {
+                const char* key = _pair_key_fn(it);
+                auto size = strlen(key) + 1;
+                auto key_cp = new char[size];
+                memcpy(key_cp, key, size);
+                reinterpret_cast<_pair*>(&it)->_key = key_cp;
             }
+            _copied = true; // 设置标志，表示 _key 已复制
         }
     private:
         /**
@@ -799,7 +810,8 @@ namespace slow_json::details {
          */
         explicit dict(serializable_wrapper* data) :
                 _type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE),
-                _key_to_index(nullptr) {
+                _key_to_index(nullptr),
+                _copied{false}{
             _data_ptr = data;
         }
 
@@ -831,7 +843,7 @@ namespace slow_json::details {
             std::vector<pair> _data; ///< 根字典的键值对
             serializable_wrapper* _data_ptr; ///< 其他类型的包装值
         };
-        bool _copied=false;
+        bool _copied;
     };
 
     /**

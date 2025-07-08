@@ -296,7 +296,7 @@ namespace slow_json {
         }
     };
 
-    inline void LoadFromDict<slow_json::dict>::load_impl(dict &value, const dynamic_dict &dict) {
+    inline void LoadFromDict<slow_json::dict>::load_impl(slow_json::dict &value, const dynamic_dict &dict) {
          if (dict.is_dict()) {
             // 处理字典类型
             std::vector<details::pair> data;
@@ -309,6 +309,7 @@ namespace slow_json {
                 data.emplace_back(std::move(p)); 
             }
             value._data = std::move(data); // 移动到目标 dict
+            value.copy_key();
         }
     }
 
