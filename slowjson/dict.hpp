@@ -37,19 +37,19 @@ namespace slow_json::details {
         constexpr field_wrapper(Field Class::*field_ptr)  // NOLINT(google-explicit-constructor)
                 : _object_ptr(nullptr),
                   _offset((std::size_t) (&((Class *)nullptr->*field_ptr))),
-                  _dump_fn([](
-                    slow_json::Buffer &buffer,
-                    const void *object_ptr, std::size_t
-                    offset) {
+        _dump_fn([](
+        slow_json::Buffer &buffer,
+        const void *object_ptr, std::size_t
+        offset) {
             const auto &object = *(Class *)object_ptr;
             Field &field = std::ref(*(Field *)((std::uintptr_t)&object + offset));
             DumpToString<Field>::dump(buffer, field);
         }),
         _load_fn([](
-            const void *object_ptr, std::size_t
-            offset,
-            const slow_json::dynamic_dict &dict
-            ) {
+        const void *object_ptr, std::size_t
+        offset,
+        const slow_json::dynamic_dict &dict
+        ) {
             auto &object = *(Class *)object_ptr;
             Field &field = std::ref(*(Field *)((std::uintptr_t)&object + offset));
             LoadFromDict<Field>::load(field, dict);
@@ -174,14 +174,14 @@ namespace slow_json::details {
         serializable_wrapper(const serializable_wrapper &other) SLOW_JSON_NOEXCEPT
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
-                  _move_fn(other._move_fn),
-                  _deleter(other._deleter) {
+                  _move_or_delete_fn(other._move_or_delete_fn)
+        {
             set_heap_allocated(other.is_heap_allocated());
             if (is_heap_allocated()) {
                 _buffer_ptr = other._buffer_ptr;
                 other._buffer_ptr = nullptr;
             } else {
-                other._move_fn(&_buffer, const_cast<void *>(static_cast<const void *>(&other._buffer)));
+                other._move_or_delete_fn(&_buffer, const_cast<void*>(static_cast<const void*>(&other._buffer)), false, false);
             }
         }
 
@@ -193,26 +193,22 @@ namespace slow_json::details {
          */
         serializable_wrapper& operator=(serializable_wrapper&& other) noexcept {
             if (this != &other) {
-                // 清理当前对象的资源
-                if (is_heap_allocated()) {
-                    if (_buffer_ptr) {
-                        _deleter(_buffer_ptr, true);
-                    }
-                } else {
-                    _deleter(&_buffer, false);
+                // 清理当前资源（删除操作）
+                if (_move_or_delete_fn) {
+                    void* target = is_heap_allocated() ? _buffer_ptr : static_cast<void*>(&_buffer);
+                    _move_or_delete_fn(nullptr, target, true, is_heap_allocated());
                 }
 
-                // 转移 other 的资源
+                // 转移资源
                 _type_name = other._type_name;
                 _dump_fn = other._dump_fn;
-                _move_fn = other._move_fn;
-                _deleter = other._deleter;
+                _move_or_delete_fn = other._move_or_delete_fn;
                 set_heap_allocated(other.is_heap_allocated());
                 if (is_heap_allocated()) {
                     _buffer_ptr = other._buffer_ptr;
                     other._buffer_ptr = nullptr;
                 } else {
-                    other._move_fn(&_buffer, const_cast<void *>(static_cast<const void *>(&other._buffer)));
+                    other._move_or_delete_fn(&_buffer, &other._buffer, false, false);
                 }
             }
             return *this;
@@ -226,14 +222,13 @@ namespace slow_json::details {
         serializable_wrapper(serializable_wrapper &&other) noexcept
                 : _type_name(other._type_name),
                   _dump_fn(other._dump_fn),
-                  _move_fn(other._move_fn),
-                  _deleter(other._deleter) {
+                  _move_or_delete_fn(other._move_or_delete_fn) {
             set_heap_allocated(other.is_heap_allocated());
             if (is_heap_allocated()) {
                 _buffer_ptr = other._buffer_ptr;
                 other._buffer_ptr = nullptr;
             } else {
-                other._move_fn(&_buffer, const_cast<void *>(static_cast<const void *>(&other._buffer)));
+                other._move_or_delete_fn(&_buffer, &other._buffer, false, false);
             }
         }
 
@@ -242,12 +237,9 @@ namespace slow_json::details {
          * @details 根据堆分配标志释放堆内存或调用小对象的析构函数
          */
         ~serializable_wrapper() {
-            if (is_heap_allocated()) {
-                if (_buffer_ptr) {
-                    _deleter(_buffer_ptr, true);
-                }
-            } else {
-                _deleter(&_buffer, false);
+            if (_move_or_delete_fn) {
+                void* target = is_heap_allocated() ? _buffer_ptr : static_cast<void*>(&_buffer);
+                _move_or_delete_fn(nullptr, target, true, is_heap_allocated());
             }
         }
 
@@ -299,7 +291,7 @@ namespace slow_json::details {
         }
 
     private:
-        static constexpr std::size_t buffer_size = 24; ///< 小对象缓冲区大小
+        static constexpr std::size_t buffer_size = 32; ///< 小对象缓冲区大小
 
         // 位掩码定义
         static constexpr uintptr_t HEAP_MASK = 0x1;    // 最低位 - 堆分配标志
@@ -308,12 +300,11 @@ namespace slow_json::details {
 
         union {
             mutable void *_buffer_ptr; ///< 大对象指针，指向堆内存
-            alignas(8) char _buffer[buffer_size]; ///< 小对象缓冲区
+            alignas(16) char _buffer[buffer_size]; ///< 小对象缓冲区
         };
         mutable const char *_type_name; ///< 类型名称，内存地址8对齐，末尾3位存储类型和堆分配信息
         void (*_dump_fn)(slow_json::Buffer &, void *) = nullptr; ///< 序列化函数指针
-        void (*_move_fn)(void *, void *) = nullptr; ///< 移动/复制函数指针
-        void (*_deleter)(void *, bool) = nullptr; ///< 析构函数指针
+        void (*_move_or_delete_fn)(void*, void*, bool, bool) = nullptr;
 
         /**
          * @brief 设置类型信息
@@ -365,22 +356,25 @@ namespace slow_json::details {
             _dump_fn = [](slow_json::Buffer &buffer, void *object) {
                 slow_json::DumpToString<U>::dump(buffer, *static_cast<U *>(object));
             };
-            _move_fn = [](void *dest, void *src) {
-                if constexpr (std::is_trivially_copyable_v<U>) {
-                    std::memcpy(dest, src, sizeof(_buffer));
-                } else if constexpr (std::is_move_constructible_v<U>) {
-                    new(dest) U(std::move(*static_cast<U *>(src)));
-                } else if constexpr (std::is_copy_constructible_v<U>) {
-                    new(dest) U(*static_cast<U *>(src));
+            _move_or_delete_fn = [](void *dest, void *src, bool move_type, bool is_heap_allocated) {
+                if (!move_type) {
+                    // 移动操作：构造新对象到dest
+                    if constexpr (std::is_trivially_copyable_v<U>) {
+                        std::memcpy(dest, src, sizeof(U));
+                    } else if constexpr (std::is_move_constructible_v<U>) {
+                        new(dest) U(std::move(*static_cast<U *>(src)));
+                    } else if constexpr (std::is_copy_constructible_v<U>) {
+                        new(dest) U(*static_cast<U *>(src));
+                    } else {
+                        assert_with_message(false, "类型既不可复制也不可移动: %s", slow_json::type_name_v<U>.str);
+                    }
                 } else {
-                    assert_with_message(false, "类型既不可复制也不可移动: %s", slow_json::type_name_v<U>.str);
-                }
-            };
-            _deleter = [](void *object, bool is_heap_allocated) {
-                if (is_heap_allocated) {
-                    delete static_cast<U *>(object);
-                } else {
-                    static_cast<U *>(object)->~U();
+                    // 删除操作：根据堆分配标志销毁对象
+                    if (is_heap_allocated) {
+                        delete static_cast<U *>(src);
+                    } else {
+                        static_cast<U *>(src)->~U();
+                    }
                 }
             };
         }
@@ -492,9 +486,9 @@ namespace slow_json::details {
          * @details 使用移动语义将键值对列表存储到字典中
          */
         dict(std::initializer_list<pair>&& data) :
-        _type(serializable_wrapper::ROOT_DICT_TYPE),
-        _key_to_index(nullptr),
-        _data_ptr{nullptr}{
+                _type(serializable_wrapper::ROOT_DICT_TYPE),
+                _key_to_index(nullptr),
+                _data_ptr{nullptr}{
             new (&_data) std::vector<pair>(data);
         }
 
@@ -549,6 +543,12 @@ namespace slow_json::details {
             if (_type == serializable_wrapper::ROOT_DICT_TYPE) {
                 _data.~vector();
                 delete _key_to_index;
+                if(_copied) {
+                    for (const auto &it: _data) {
+                        const char *key = _pair_key_fn(it);
+                        delete key;
+                    }
+                }
             }
         }
 
@@ -780,7 +780,17 @@ namespace slow_json::details {
             }
             return result;
         }
-
+        void copy_key(){
+            assert_with_message(_type==serializable_wrapper::ROOT_DICT_TYPE,"不正确的类型");
+            for(const auto&it:_data){
+                const char*key=_pair_key_fn(it);
+                auto size=strlen(key)+1;
+                char*key_cp=new char[size];
+                memcpy(key_cp,key,size);
+                key=key_cp;
+                _copied=true;
+            }
+        }
     private:
         /**
          * @brief 内部构造函数，用于构造子节点
@@ -788,8 +798,8 @@ namespace slow_json::details {
          * @details 仅用于内部构造嵌套字典或值
          */
         explicit dict(serializable_wrapper* data) :
-        _type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE),
-        _key_to_index(nullptr) {
+                _type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE),
+                _key_to_index(nullptr) {
             _data_ptr = data;
         }
 
@@ -821,6 +831,7 @@ namespace slow_json::details {
             std::vector<pair> _data; ///< 根字典的键值对
             serializable_wrapper* _data_ptr; ///< 其他类型的包装值
         };
+        bool _copied=false;
     };
 
     /**
@@ -860,9 +871,16 @@ namespace slow_json::details {
         constexpr pair(const char *key, dict &&value)
                 : _key{key}, _value{std::move(value)} {}
 
+        pair(const pair&p):_key{p._key},_value{std::move(p._value)}{
+            p._key=nullptr;
+        }
+        pair(pair&&p)noexcept:_key{p._key},_value{std::move(p._value)}{
+            p._key=nullptr;
+        }
+
     private:
-        const char *_key; ///< 键，字符串形式
-        serializable_wrapper _value; ///< 值，序列化包装器形式
+        mutable const char *_key; ///< 键，字符串形式
+        mutable serializable_wrapper _value; ///< 值，序列化包装器形式
     };
 }
 
