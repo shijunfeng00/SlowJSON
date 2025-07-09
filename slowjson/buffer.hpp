@@ -10,6 +10,7 @@
 #include <utility>
 #include <cstring>
 #include <ostream>
+#include <bit>
 #include "assert_with_message.hpp"
 
 namespace slow_json {
@@ -128,15 +129,43 @@ namespace slow_json {
         void append(const char *const dst, std::size_t length) SLOW_JSON_NOEXCEPT {
             assert_with_message(dst != nullptr, "输入字符串指针为空");
             if (_capacity == 0) {
-                this->reserve(std::max(1ul, length));
+                std::size_t new_capacity = std::max(1ul, length);
+#if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 201806L
+                new_capacity = std::__ceil2(new_capacity);
+#else
+                if (new_capacity > 1) {
+                --new_capacity;
+                if (new_capacity > 0xFFFFFFFF) {
+                    new_capacity |= new_capacity >> 32;
+                }
+                if (new_capacity > 0xFFFF) {
+                    new_capacity |= new_capacity >> 16;
+                }
+                if (new_capacity > 0xFF) {
+                    new_capacity |= new_capacity >> 8;
+                }
+                if (new_capacity > 0xF) {
+                    new_capacity |= new_capacity >> 4;
+                }
+                if (new_capacity > 0x3) {
+                    new_capacity |= new_capacity >> 2;
+                }
+                if (new_capacity > 0x1) {
+                    new_capacity |= new_capacity >> 1;
+                }
+                new_capacity += 1;
+            }
+#endif
+                reserve(new_capacity);
             }
             if (_size + length > _capacity) {
-                std::size_t new_capacity = std::max(1ul, _capacity);
-                while (new_capacity <= _size + length) new_capacity <<= 1;
-                this->reserve(new_capacity);
+                std::size_t new_capacity = std::max(1ul, _capacity * 2); // 2 倍扩容
+                if (new_capacity < _size + length) {
+                    new_capacity = std::__ceil2(_size + length);
+                }
+                reserve(new_capacity);
             }
             assert_with_message(_buffer != nullptr, "扩容后缓冲区指针为空");
-            assert_with_message(_size + length <= _capacity, "数据越界，_size=%zu，length=%zu，_capacity=%zu", _size, length, _capacity);
             memcpy(_buffer + _size, dst, length);
             _size += length;
         }
@@ -246,12 +275,14 @@ namespace slow_json {
          *          这样做是为了减少reserve调用次数，毕竟每次都要copy数据
          * @param target_capacity 修改之后的缓冲区最大大小
          */
-        void try_reserve(std::size_t target_capacity) SLOW_JSON_NOEXCEPT{
+        void try_reserve(std::size_t target_capacity) SLOW_JSON_NOEXCEPT {
             assert_with_message(target_capacity < (1ULL << 48), "目标容量过大，target_capacity=%zu", target_capacity);
             if (target_capacity > _capacity) {
                 std::size_t new_capacity = std::max(1ul, _capacity);
-                while (new_capacity <= target_capacity) new_capacity <<= 1;
-                this->reserve(new_capacity);
+                if (target_capacity > new_capacity) {
+                    new_capacity = std::__ceil2(target_capacity);
+                }
+                reserve(new_capacity);
             }
         }
 
@@ -362,33 +393,25 @@ namespace slow_json {
          * @return 指向分配内存起始位置的指针
          * @note 对齐值必须是2的幂（如1,2,4,8,16,...）
          */
-        void* allocate(std::size_t size, std::size_t alignment) SLOW_JSON_NOEXCEPT{
-            assert_with_message((alignment & (alignment - 1)) == 0,
-                                "对齐值必须是2的幂, alignment=%zu", alignment);
-
-            // 计算当前指针和对齐偏移
+        void* allocate(std::size_t size, std::size_t alignment) SLOW_JSON_NOEXCEPT {
+            assert_with_message((alignment & (alignment - 1)) == 0, "对齐值必须是2的幂, alignment=%zu", alignment);
             char* ptr = _buffer + _size;
             uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
             uintptr_t aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
             std::size_t padding = aligned_addr - addr;
             std::size_t total_needed = padding + size;
-
-            // 检查并处理扩容
             if (_size + total_needed > _capacity) {
-                std::size_t new_capacity = std::max(1ul, _capacity);
-                while (new_capacity <= _size + total_needed)
-                    new_capacity <<= 1;
-                this->reserve(new_capacity);
-
-                // 重新计算对齐地址（缓冲区地址可能改变）
+                std::size_t new_capacity = std::max(1ul, _capacity * 2); // 2倍扩容
+                if (new_capacity < _size + total_needed) {
+                    new_capacity = std::__ceil2(_size + total_needed);
+                }
+                reserve(new_capacity);
                 ptr = _buffer + _size;
                 addr = reinterpret_cast<uintptr_t>(ptr);
                 aligned_addr = (addr + alignment - 1) & ~(alignment - 1);
                 padding = aligned_addr - addr;
-                total_needed = padding + size; // 重新计算
+                total_needed = padding + size;
             }
-
-            // 更新大小并返回对齐地址
             _size += total_needed;
             return reinterpret_cast<void*>(aligned_addr);
         }
