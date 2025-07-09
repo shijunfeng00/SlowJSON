@@ -43,6 +43,7 @@ int main() {
     test_dict_modify();
     test_integer_dumps();
     test_dynamic_dict_visit();
+    test_dict_loads();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

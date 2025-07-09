@@ -156,4 +156,9 @@ void test_integer_dumps();
  */
 void test_dynamic_dict_visit();
 
+/**
+ * 测试lows_json::dict反序列化的正确性
+ */
+void test_dict_loads();
+
 #endif //SLOWJSON_RUN_TEST_HPP
