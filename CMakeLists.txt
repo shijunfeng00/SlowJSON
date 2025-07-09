@@ -22,6 +22,7 @@ include_directories(
 
 set(CMAKE_CXX_STANDARD 20)
 
+
 if (BUILD_TEST)
     message("编译单元测试代码")
     file(GLOB TEST_CPP "tests/*.cpp")
@@ -40,6 +41,9 @@ elseif(BUILD_BENCHMARK)
 
 else ()
     add_executable(SlowJson main.cpp)
+    if(SLOW_JSON_ASSERT_AS_EXCEPTION)
+        target_compile_definitions(SlowJson PRIVATE SLOW_JSON_ASSERT_AS_EXCEPTION)
+    endif()
 endif ()
 
 target_link_libraries(SlowJson)

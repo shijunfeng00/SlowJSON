@@ -193,6 +193,9 @@ namespace slow_json {
          * @return 如果 JSON 是 null 则返回 true，否则返回 false
          */
         [[nodiscard]] bool empty() const SLOW_JSON_NOEXCEPT {
+            if(!_value){
+                return true;
+            }
             return _value->IsNull();
         }
 
@@ -314,6 +317,9 @@ namespace slow_json {
          * @return 如果包含该键返回 true，否则返回 false
          */
         [[nodiscard]] bool contains(std::string_view key) const SLOW_JSON_NOEXCEPT {
+            if(!_value){
+                return false;
+            }
             assert_with_message(_value->IsObject(),
                                 "试图把JSON当作字典访问，但实际他并不是个数组，发生错误的JSON字符串为:%s",
                                 _json_str.c_str());
