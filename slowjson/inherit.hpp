@@ -8,7 +8,7 @@
 #include "concepts.hpp"
 
 namespace slow_json {
-    //此处只适用于inherit，不建议用户亲自调用，可能会带来一些意想不到的情况
+    //下面的merge函数，主要用于inherit，按照设计并不是主要接口，不建议使用者调用，可能会带来一些意想不到的情况
     namespace details{
 
         /**

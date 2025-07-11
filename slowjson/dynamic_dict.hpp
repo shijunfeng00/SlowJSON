@@ -21,8 +21,6 @@ namespace slow_json {
     template<typename T>
     struct ILoadFromDict;
 
-    using namespace rapidjson;
-
     /**
     * @brief 一个可以动态访问和转换 JSON 数据的结构体，采用引用计数管理内存
     * @details 该结构体使用 rapidjson 库存储和操作 JSON 数据，通过内部共享数据结构实现引用计数，

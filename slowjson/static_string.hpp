@@ -63,7 +63,7 @@ namespace slow_json {
     };
     namespace static_string_literals {
         /**
-         * @brief 用于创建 StaticString 的用户定义字面量。
+         * @brief 用于创建 StaticString 的定义字面量操作符。
          *
          * @tparam T 字符类型。
          * @tparam chs 字符。

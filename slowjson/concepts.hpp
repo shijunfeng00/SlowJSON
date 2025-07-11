@@ -301,7 +301,7 @@ namespace slow_json::concepts {
     concept atomic=requires(T t){ details::match_atomic(t);};
 
     /**
-     * 支持序列化的类型，通常为用户自定义类型，且正确实现了get_config方法
+     * 支持序列化的类型，正确实现了get_config方法的自定义类
      * @tparam T
      */
     template<typename T>
