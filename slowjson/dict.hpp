@@ -3,6 +3,69 @@
  * @brief 实现动态字典结构及相关序列化功能
  * @author hyzh
  * @date 2025/3/4
+ * 
+ * ======================== 核心组件说明 ========================
+ * 本文件实现了动态字典结构，支持JSON格式的序列化/反序列化操作。
+ * 主要组件：
+ * 1. field_wrapper - 封装类成员指针，提供运行时动态访问
+ * 2. serializable_wrapper - 通用值包装器，支持多种存储类型
+ * 3. key_to_index - 键到索引的映射结构
+ * 4. dict - 核心字典结构，支持嵌套字典和列表
+ * 5. pair - 键值对基础单元
+ * 
+ * ======================== 设计亮点 ========================
+ * 1. 内存优化：
+ *   - serializable_wrapper:
+ *     * 小对象(≤32B)使用内部缓冲区(SOO)
+ *     * 大对象使用堆分配
+ *     * 类型名称指针低3位存储元数据(类型+分配标志)
+ * 
+ *   - dict:
+ *     * _key_to_index指针低3位存储:
+ *       - 类型信息(2位)
+ *       - 键复制标志(1位)
+ *     * 减少结构体大小16字节，提高缓存局部性
+ * 
+ * 2. 高效序列化：
+ *   - 通过函数指针实现多态行为（不基于虚函数）
+ *   - 延迟初始化键索引映射(key_to_index)
+ * 
+ * 3. 安全设计：
+ *   - 移动语义避免深拷贝
+ *   - 明确的类型检查(cast/as_type)
+ *   - 根字典与嵌套字典区别处理
+ * 
+ * 4. 灵活存储：
+ *   - 支持基础类型、列表、嵌套字典、大量STL容器及容器适配器
+ * 
+ * ======================== 使用示例 ========================
+ * 1. 创建字典：
+ *    dict d = {
+ *        {"name", "John"},
+ *        {"age", 30},
+ *        {"classes",{"Chinese","English","Mash"}}
+ *        {"scores", std::vector{90, 85, 95}},
+ *        {"details",{
+ *            {"location","Sichuan"},
+ *            {"device","Mobile Phone"}
+ *        }},
+ *        {"others",nullptr}
+ *    };
+ * 
+ * 2. 访问元素：
+ *    auto name = d["name"].cast<std::string>();
+ *    auto device = d["details"]["device"].cast<const char*>();
+ * 
+ * 3. 类型检查：
+ *    if (d["age"].is_fundamental()) {
+ *        // 处理基础类型
+ *    }
+ *  4.遍历
+ *    for(auto&[k,v]:d["details"].as_dict()){
+ *        std::cout<<k<<" ";
+ *        slow_json::visit(v,[](const auto&&value){std::cout<<v<<std::endl;});
+ *    }
+ *
  */
 
 #ifndef SLOWJSON_DICT_HPP
@@ -503,7 +566,9 @@ namespace slow_json::details {
          * @param data 键值对参数包
          * @details 将参数包中的键值对转换为 pair 对象并存储，设置类型为 ROOT_DICT_TYPE
          */
-        template<typename... K, typename... V>
+        template<typename... K,typename... V>
+        requires ((concepts::static_string<K> && ...) ||
+                 (concepts::string<K> && ...))
         constexpr dict(std::pair<K, V>&&... data)   // NOLINT(google-explicit-constructor)
                 : _key_to_index(nullptr),_data_ptr{nullptr} {
             set_type(serializable_wrapper::ROOT_DICT_TYPE);

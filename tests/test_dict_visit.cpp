@@ -31,7 +31,10 @@ void test_dict_visit() {
                   }}
     };
 
-
+    slow_json::dict dict_with_std_pair{
+        {"settings", {{"theme", "dark"}, {"notifications", std::nullopt}}},
+        {"coordinates", std::pair<float, float>{1.5f, 2.5f}}, // STL pair 支持
+    };
 
     // 测试基本键值访问和类型转换
     assert_with_message(dict.contains("x"), "应包含 x 键");
