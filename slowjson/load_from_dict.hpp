@@ -64,9 +64,14 @@ namespace slow_json {
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
             assert_with_message(!dict.value()->IsNull(), "试图将空对象解析为%s", type_name_v<T>.str);
-            if constexpr (std::is_same_v<T, const char *>) {
+            if constexpr(concepts::array<T> && std::is_same_v<std::decay_t<T>,char *>){
+                //char value[N]类型，已经分配好空间了，直接往value拷贝就行
                 const char *data = dict.value()->GetString();
-                std::size_t size = strlen(data);
+                std::size_t size = dict.value()->GetStringLength();
+                memcpy(value, data, size + 1);
+            } else if constexpr (std::is_same_v<T, const char *>) {
+                const char *data = dict.value()->GetString();
+                 std::size_t size = dict.value()->GetStringLength();
                 char *data_cp = new char[size + 1];
                 memcpy(data_cp, data, size + 1);
                 value = data_cp;
