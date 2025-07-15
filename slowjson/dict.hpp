@@ -657,19 +657,22 @@ namespace slow_json::details {
          * @details 清理当前资源，移动字典数据，更新类型
          * @throws 当为根字典时抛出异常
          */
-        dict& operator=(dict&& other) SLOW_JSON_NOEXCEPT {
-            if (this != &other) {
-                assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");
-                set_type(serializable_wrapper::LIST_TYPE);
+        dict& operator=(dict&& other) SLOW_JSON_NOEXCEPT {            
+            if (this != &other) {  
+                assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");     
+                // 如果对面是根字典，而自己非根字典
+                // 则类型为DICT_TYPE，数据仍然存储在_data_ptr中
+                auto type=other.get_type();
+                set_type(type==serializable_wrapper::ROOT_DICT_TYPE?serializable_wrapper::DICT_TYPE:type);
                 set_copied(other.get_copied());
-                *_data_ptr = serializable_wrapper(std::move(other));
+                *_data_ptr=serializable_wrapper(std::move(other));
             }
             return *this;
         }
 
         /**
          * @brief 检查是否包含指定键
-         * @param key 键
+         * @param key 键 
          * @return bool 是否包含
          * @details 对于根字典，检查键值对；对于嵌套字典，委托给包装值
          */
