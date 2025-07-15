@@ -1,133 +1,466 @@
-//
-// Created by hyzh on 2025/3/18.
-//
-#include "slowjson.hpp"
+
+#include <slowjson.hpp>
+#include <document.h>
+#include <stringbuffer.h>
+#include <writer.h>
 #include <chrono>
 #include <iostream>
-#include "document.h"
-#include "stringbuffer.h"
-#include "writer.h"
-namespace nested {
-    constexpr int ITERATIONS = 1000000;
+#include <cassert>
 
-// SlowJSON static_dict 测试
-    inline void benchmark_slowjson_static_dict() {
-        using slow_json::static_dict;
-        auto start = std::chrono::high_resolution_clock::now();
-        slow_json::Buffer buffer{1000};
-        for (int i = 0; i < ITERATIONS; ++i) {
-            auto dict = static_dict{
-                    std::pair{"user", static_dict{
-                            std::pair{"basic", static_dict{
-                                    std::pair{"name", "shijunfeng00"},
-                                    std::pair{"age", 19}
-                            }},
-                            std::pair{"contact", static_dict{
-                                    std::pair{"emails", std::tuple{"a@b.com", "c@d.com"}},
-                                    std::pair{"address", static_dict{
-                                            std::pair{"country", "China"},
-                                            std::pair{"city", "Chengdu"}
-                                    }}
-                            }}
+namespace nested {
+    constexpr int ITERATIONS = 200000;
+
+    // SlowJSON static_dict 测试
+    inline std::string benchmark_slowjson_static_dict() {
+        using namespace slow_json::static_string_literals;
+        slow_json::Buffer buffer{10000};
+        // 先运行一次以验证输出
+        auto dict = slow_json::static_dict{
+            std::pair{"timestamp"_ss, 1722016800},
+            std::pair{"orders"_ss, std::tuple{
+                slow_json::static_dict{
+                    std::pair{"order_id"_ss, "ORD-12345"},
+                    std::pair{"customer"_ss, slow_json::static_dict{
+                        std::pair{"id"_ss, 1001},
+                        std::pair{"name"_ss, "Alice Smith"},
+                        std::pair{"preferences"_ss, slow_json::static_dict{
+                            std::pair{"language"_ss, "en"},
+                            std::pair{"currency"_ss, "USD"}
+                        }}
                     }},
-                    std::pair{"metadata", static_dict{
-                            std::pair{"tags", std::tuple{1, 2, 3}},
-                            std::pair{"scores", std::tuple{98.5, 87.5, 92.0}}
+                    std::pair{"items"_ss, std::tuple{
+                        slow_json::static_dict{
+                            std::pair{"product"_ss, slow_json::static_dict{
+                                std::pair{"id"_ss, 101},
+                                std::pair{"name"_ss, "Laptop"},
+                                std::pair{"price"_ss, 1299.99}
+                            }},
+                            std::pair{"quantity"_ss, 1},
+                            std::pair{"discount"_ss, 0.1}
+                        },
+                        slow_json::static_dict{
+                            std::pair{"product"_ss, slow_json::static_dict{
+                                std::pair{"id"_ss, 205},
+                                std::pair{"name"_ss, "Mouse"},
+                                std::pair{"price"_ss, 29.99}
+                            }},
+                            std::pair{"quantity"_ss, 2},
+                            std::pair{"discount"_ss, std::nullopt}
+                        }
                     }}
+                },
+                slow_json::static_dict{
+                    std::pair{"order_id"_ss, "ORD-12346"},
+                    std::pair{"customer"_ss, slow_json::static_dict{
+                        std::pair{"id"_ss, 1002},
+                        std::pair{"name"_ss, "Bob Johnson"},
+                        std::pair{"preferences"_ss, slow_json::static_dict{
+                            std::pair{"language"_ss, "es"},
+                            std::pair{"currency"_ss, "EUR"}
+                        }}
+                    }},
+                    std::pair{"items"_ss, std::tuple{
+                        slow_json::static_dict{
+                            std::pair{"product"_ss, slow_json::static_dict{
+                                std::pair{"id"_ss, 305},
+                                std::pair{"name"_ss, "Keyboard"},
+                                std::pair{"price"_ss, 89.99}
+                            }},
+                            std::pair{"quantity"_ss, 1}
+                        }
+                    }}
+                }
+            }},
+            std::pair{"system_info"_ss, slow_json::static_dict{
+                std::pair{"version"_ss, "1.4.2"},
+                std::pair{"environment"_ss, "production"}
+            }}
+        };
+        slow_json::dumps(buffer, dict);
+        auto result = buffer.string();
+        buffer.clear();
+        // 性能测试，包含构造时间
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < ITERATIONS; ++i) {
+            auto dict_inner = slow_json::static_dict{
+                std::pair{"timestamp"_ss, 1722016800},
+                std::pair{"orders"_ss, std::tuple{
+                    slow_json::static_dict{
+                        std::pair{"order_id"_ss, "ORD-12345"},
+                        std::pair{"customer"_ss, slow_json::static_dict{
+                            std::pair{"id"_ss, 1001},
+                            std::pair{"name"_ss, "Alice Smith"},
+                            std::pair{"preferences"_ss, slow_json::static_dict{
+                                std::pair{"language"_ss, "en"},
+                                std::pair{"currency"_ss, "USD"}
+                            }}
+                        }},
+                        std::pair{"items"_ss, std::tuple{
+                            slow_json::static_dict{
+                                std::pair{"product"_ss, slow_json::static_dict{
+                                    std::pair{"id"_ss, 101},
+                                    std::pair{"name"_ss, "Laptop"},
+                                    std::pair{"price"_ss, 1299.99}
+                                }},
+                                std::pair{"quantity"_ss, 1},
+                                std::pair{"discount"_ss, 0.1}
+                            },
+                            slow_json::static_dict{
+                                std::pair{"product"_ss, slow_json::static_dict{
+                                    std::pair{"id"_ss, 205},
+                                    std::pair{"name"_ss, "Mouse"},
+                                    std::pair{"price"_ss, 29.99}
+                                }},
+                                std::pair{"quantity"_ss, 2},
+                                std::pair{"discount"_ss, std::nullopt}
+                            }
+                        }}
+                    },
+                    slow_json::static_dict{
+                        std::pair{"order_id"_ss, "ORD-12346"},
+                        std::pair{"customer"_ss, slow_json::static_dict{
+                            std::pair{"id"_ss, 1002},
+                            std::pair{"name"_ss, "Bob Johnson"},
+                            std::pair{"preferences"_ss, slow_json::static_dict{
+                                std::pair{"language"_ss, "es"},
+                                std::pair{"currency"_ss, "EUR"}
+                            }}
+                        }},
+                        std::pair{"items"_ss, std::tuple{
+                            slow_json::static_dict{
+                                std::pair{"product"_ss, slow_json::static_dict{
+                                    std::pair{"id"_ss, 305},
+                                    std::pair{"name"_ss, "Keyboard"},
+                                    std::pair{"price"_ss, 89.99}
+                                }},
+                                std::pair{"quantity"_ss, 1}
+                            }
+                        }}
+                    }
+                }},
+                std::pair{"system_info"_ss, slow_json::static_dict{
+                    std::pair{"version"_ss, "1.4.2"},
+                    std::pair{"environment"_ss, "production"}
+                }}
             };
-            slow_json::dumps(buffer, dict);
+            slow_json::dumps(buffer, dict_inner);
             buffer.clear();
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "static_dict 嵌套序列化: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+        return result;
     }
 
-// SlowJSON dict 测试
-    inline void benchmark_slowjson_dict() {
-
-        slow_json::Buffer buffer{1000};
-        auto start = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < ITERATIONS; ++i) {
-            auto dict = slow_json::dict{
-                    {"user",{
-                        {"basic", {
-                            {"name", "shijunfeng00"},
-                            {"age", 19}
-                        }},
-                        {"contact", {
-                            {"emails", {"a@b.com", "c@d.com"}}, //这里有歧义
-                            {"address", {
-                                {"country", "China"},
-                                {"city", "Chengdu"}
-                            }}
+    // SlowJSON dict 测试
+    inline std::string benchmark_slowjson_dict() {
+        slow_json::Buffer buffer{10000};
+        // 先运行一次以验证输出
+        auto dict = slow_json::dict{
+            {"timestamp", 1722016800},
+            {"orders", {
+                slow_json::dict{
+                    {"order_id", "ORD-12345"},
+                    {"customer", {
+                        {"id", 1001},
+                        {"name", "Alice Smith"},
+                        {"preferences", {
+                            {"language", "en"},
+                            {"currency", "USD"}
                         }}
                     }},
-                    {"metadata", {
-                        {"tags",  {1, 2, 3}},
-                        {"scores",  {98.5, 87.5, 92.0}}
+                    {"items", {
+                        slow_json::dict{
+                            {"product", {
+                                {"id", 101},
+                                {"name", "Laptop"},
+                                {"price", 1299.99}
+                            }},
+                            {"quantity", 1},
+                            {"discount", 0.1}
+                        },
+                        slow_json::dict{
+                            {"product", {
+                                {"id", 205},
+                                {"name", "Mouse"},
+                                {"price", 29.99}
+                            }},
+                            {"quantity", 2},
+                            {"discount", std::nullopt}
+                        }
                     }}
+                },
+                slow_json::dict{
+                    {"order_id", "ORD-12346"},
+                    {"customer", {
+                        {"id", 1002},
+                        {"name", "Bob Johnson"},
+                        {"preferences", {
+                            {"language", "es"},
+                            {"currency", "EUR"}
+                        }}
+                    }},
+                    {"items", slow_json::list{
+                        slow_json::dict{
+                            {"product", {
+                                {"id", 305},
+                                {"name", "Keyboard"},
+                                {"price", 89.99}
+                            }},
+                            {"quantity", 1}
+                        }
+                    }}
+                }
+            }},
+            {"system_info", {
+                {"version", "1.4.2"},
+                {"environment", "production"}
+            }}
+        };
+        slow_json::dumps(buffer, dict);
+        auto result = buffer.string();
+        buffer.clear();
+        // 性能测试，包含构造时间
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < ITERATIONS; ++i) {
+            auto dict_inner = slow_json::dict{
+                {"timestamp", 1722016800},
+                {"orders", {
+                    slow_json::dict{
+                        {"order_id", "ORD-12345"},
+                        {"customer", {
+                            {"id", 1001},
+                            {"name", "Alice Smith"},
+                            {"preferences", {
+                                {"language", "en"},
+                                {"currency", "USD"}
+                            }}
+                        }},
+                        {"items", {
+                            slow_json::dict{
+                                {"product", {
+                                    {"id", 101},
+                                    {"name", "Laptop"},
+                                    {"price", 1299.99}
+                                }},
+                                {"quantity", 1},
+                                {"discount", 0.1}
+                            },
+                            slow_json::dict{
+                                {"product", {
+                                    {"id", 205},
+                                    {"name", "Mouse"},
+                                    {"price", 29.99}
+                                }},
+                                {"quantity", 2},
+                                {"discount", std::nullopt}
+                            }
+                        }}
+                    },
+                    slow_json::dict{
+                        {"order_id", "ORD-12346"},
+                        {"customer", {
+                            {"id", 1002},
+                            {"name", "Bob Johnson"},
+                            {"preferences", {
+                                {"language", "es"},
+                                {"currency", "EUR"}
+                            }}
+                        }},
+                        {"items", slow_json::list{
+                            slow_json::dict{
+                                {"product", {
+                                    {"id", 305},
+                                    {"name", "Keyboard"},
+                                    {"price", 89.99}
+                                }},
+                                {"quantity", 1}
+                            }
+                        }}
+                    }
+                }},
+                {"system_info", {
+                    {"version", "1.4.2"},
+                    {"environment", "production"}
+                }}
             };
-            slow_json::dumps(buffer, dict);
+            slow_json::dumps(buffer, dict_inner);
             buffer.clear();
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "dict 嵌套序列化: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+        return result;
     }
 
-// RapidJSON 测试
-    inline void benchmark_rapidjson() {
-        auto start = std::chrono::high_resolution_clock::now();
+    // RapidJSON 测试
+    inline std::string benchmark_rapidjson() {
         rapidjson::Document doc;
-        auto &allocator = doc.GetAllocator();
+        rapidjson::StringBuffer buffer;
+        rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+        doc.SetObject();
+        auto& allocator = doc.GetAllocator();
+        // 先运行一次以验证输出
+        doc.AddMember("timestamp", 1722016800, allocator);
+        rapidjson::Value orders(rapidjson::kArrayType);
+        {
+            rapidjson::Value order1(rapidjson::kObjectType);
+            order1.AddMember("order_id", "ORD-12345", allocator);
+            rapidjson::Value customer1(rapidjson::kObjectType);
+            customer1.AddMember("id", 1001, allocator);
+            customer1.AddMember("name", "Alice Smith", allocator);
+            rapidjson::Value preferences1(rapidjson::kObjectType);
+            preferences1.AddMember("language", "en", allocator);
+            preferences1.AddMember("currency", "USD", allocator);
+            customer1.AddMember("preferences", preferences1, allocator);
+            order1.AddMember("customer", customer1, allocator);
+            rapidjson::Value items1(rapidjson::kArrayType);
+            {
+                rapidjson::Value item1(rapidjson::kObjectType);
+                rapidjson::Value product1(rapidjson::kObjectType);
+                product1.AddMember("id", 101, allocator);
+                product1.AddMember("name", "Laptop", allocator);
+                product1.AddMember("price", 1299.99, allocator);
+                item1.AddMember("product", product1, allocator);
+                item1.AddMember("quantity", 1, allocator);
+                item1.AddMember("discount", 0.1, allocator);
+                items1.PushBack(item1, allocator);
+                rapidjson::Value item2(rapidjson::kObjectType);
+                rapidjson::Value product2(rapidjson::kObjectType);
+                product2.AddMember("id", 205, allocator);
+                product2.AddMember("name", "Mouse", allocator);
+                product2.AddMember("price", 29.99, allocator);
+                item2.AddMember("product", product2, allocator);
+                item2.AddMember("quantity", 2, allocator);
+                item2.AddMember("discount", rapidjson::Value(rapidjson::kNullType), allocator);
+                items1.PushBack(item2, allocator);
+            }
+            order1.AddMember("items", items1, allocator);
+            orders.PushBack(order1, allocator);
+            rapidjson::Value order2(rapidjson::kObjectType);
+            order2.AddMember("order_id", "ORD-12346", allocator);
+            rapidjson::Value customer2(rapidjson::kObjectType);
+            customer2.AddMember("id", 1002, allocator);
+            customer2.AddMember("name", "Bob Johnson", allocator);
+            rapidjson::Value preferences2(rapidjson::kObjectType);
+            preferences2.AddMember("language", "es", allocator);
+            preferences2.AddMember("currency", "EUR", allocator);
+            customer2.AddMember("preferences", preferences2, allocator);
+            order2.AddMember("customer", customer2, allocator);
+            rapidjson::Value items2(rapidjson::kArrayType);
+            {
+                rapidjson::Value item1(rapidjson::kObjectType);
+                rapidjson::Value product1(rapidjson::kObjectType);
+                product1.AddMember("id", 305, allocator);
+                product1.AddMember("name", "Keyboard", allocator);
+                product1.AddMember("price", 89.99, allocator);
+                item1.AddMember("product", product1, allocator);
+                item1.AddMember("quantity", 1, allocator);
+                items2.PushBack(item1, allocator);
+            }
+            order2.AddMember("items", items2, allocator);
+            orders.PushBack(order2, allocator);
+        }
+        doc.AddMember("orders", orders, allocator);
+        rapidjson::Value system_info(rapidjson::kObjectType);
+        system_info.AddMember("version", "1.4.2", allocator);
+        system_info.AddMember("environment", "production", allocator);
+        doc.AddMember("system_info", system_info, allocator);
+        doc.Accept(writer);
+        auto result = std::string(buffer.GetString());
+        buffer.Clear();
+        writer.Reset(buffer);
+        doc.SetObject();
+        // 性能测试，包含构造时间
+        auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
             doc.SetObject();
-            rapidjson::Value user(rapidjson::kObjectType);
+            doc.AddMember("timestamp", 1722016800, allocator);
+            rapidjson::Value orders_inner(rapidjson::kArrayType);
             {
-                rapidjson::Value basic(rapidjson::kObjectType);
-                basic.AddMember("name", "shijunfeng00", allocator);
-                basic.AddMember("age", 19, allocator);
-                rapidjson::Value contact(rapidjson::kObjectType);
-                rapidjson::Value emails(rapidjson::kArrayType);
-                for (auto &&email: {"a@b.com", "c@d.com"}) {
-                    emails.PushBack(rapidjson::StringRef(email), allocator);
+                rapidjson::Value order1(rapidjson::kObjectType);
+                order1.AddMember("order_id", "ORD-12345", allocator);
+                rapidjson::Value customer1(rapidjson::kObjectType);
+                customer1.AddMember("id", 1001, allocator);
+                customer1.AddMember("name", "Alice Smith", allocator);
+                rapidjson::Value preferences1(rapidjson::kObjectType);
+                preferences1.AddMember("language", "en", allocator);
+                preferences1.AddMember("currency", "USD", allocator);
+                customer1.AddMember("preferences", preferences1, allocator);
+                order1.AddMember("customer", customer1, allocator);
+                rapidjson::Value items1(rapidjson::kArrayType);
+                {
+                    rapidjson::Value item1(rapidjson::kObjectType);
+                    rapidjson::Value product1(rapidjson::kObjectType);
+                    product1.AddMember("id", 101, allocator);
+                    product1.AddMember("name", "Laptop", allocator);
+                    product1.AddMember("price", 1299.99, allocator);
+                    item1.AddMember("product", product1, allocator);
+                    item1.AddMember("quantity", 1, allocator);
+                    item1.AddMember("discount", 0.1, allocator);
+                    items1.PushBack(item1, allocator);
+                    rapidjson::Value item2(rapidjson::kObjectType);
+                    rapidjson::Value product2(rapidjson::kObjectType);
+                    product2.AddMember("id", 205, allocator);
+                    product2.AddMember("name", "Mouse", allocator);
+                    product2.AddMember("price", 29.99, allocator);
+                    item2.AddMember("product", product2, allocator);
+                    item2.AddMember("quantity", 2, allocator);
+                    item2.AddMember("discount", rapidjson::Value(rapidjson::kNullType), allocator);
+                    items1.PushBack(item2, allocator);
                 }
-                contact.AddMember("emails", emails, allocator);
-                rapidjson::Value address(rapidjson::kObjectType);
-                address.AddMember("country", "China", allocator);
-                address.AddMember("city", "Chengdu", allocator);
-                contact.AddMember("address", address, allocator);
-                user.AddMember("basic", basic, allocator);
-                user.AddMember("contact", contact, allocator);
+                order1.AddMember("items", items1, allocator);
+                orders_inner.PushBack(order1, allocator);
+                rapidjson::Value order2(rapidjson::kObjectType);
+                order2.AddMember("order_id", "ORD-12346", allocator);
+                rapidjson::Value customer2(rapidjson::kObjectType);
+                customer2.AddMember("id", 1002, allocator);
+                customer2.AddMember("name", "Bob Johnson", allocator);
+                rapidjson::Value preferences2(rapidjson::kObjectType);
+                preferences2.AddMember("language", "es", allocator);
+                preferences2.AddMember("currency", "EUR", allocator);
+                customer2.AddMember("preferences", preferences2, allocator);
+                order2.AddMember("customer", customer2, allocator);
+                rapidjson::Value items2(rapidjson::kArrayType);
+                {
+                    rapidjson::Value item1(rapidjson::kObjectType);
+                    rapidjson::Value product1(rapidjson::kObjectType);
+                    product1.AddMember("id", 305, allocator);
+                    product1.AddMember("name", "Keyboard", allocator);
+                    product1.AddMember("price", 89.99, allocator);
+                    item1.AddMember("product", product1, allocator);
+                    item1.AddMember("quantity", 1, allocator);
+                    items2.PushBack(item1, allocator);
+                }
+                order2.AddMember("items", items2, allocator);
+                orders_inner.PushBack(order2, allocator);
             }
-            rapidjson::Value metadata(rapidjson::kObjectType);
-            rapidjson::Value tags(rapidjson::kArrayType);
-            for (auto tag: {1, 2, 3}) tags.PushBack(tag, allocator);
-            rapidjson::Value scores(rapidjson::kArrayType);
-            for (auto score: {98.5, 87.5, 92.0}) scores.PushBack(score, allocator);
-            metadata.AddMember("tags", tags, allocator);
-            metadata.AddMember("scores", scores, allocator);
-            doc.AddMember("user", user, allocator);
-            doc.AddMember("metadata", metadata, allocator);
-            rapidjson::StringBuffer buffer;
-            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            doc.AddMember("orders", orders_inner, allocator);
+            rapidjson::Value system_info(rapidjson::kObjectType);
+            system_info.AddMember("version", "1.4.2", allocator);
+            system_info.AddMember("environment", "production", allocator);
+            doc.AddMember("system_info", system_info, allocator);
             doc.Accept(writer);
-            buffer.GetString();
+            buffer.Clear();
+            writer.Reset(buffer);
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::cout << "RapidJSON 嵌套序列化: "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+        return result;
     }
 }
 
 int benchmark_nested() {
-    printf("-------生成复杂嵌套JSON-------\n");
-    nested::benchmark_slowjson_static_dict();
-    nested::benchmark_slowjson_dict();
-    nested::benchmark_rapidjson();
+    printf("-------生成复杂嵌套 JSON-------\n");
+    // 验证 JSON 输出一致性
+    auto static_dict_result = nested::benchmark_slowjson_static_dict();
+    auto dict_result = nested::benchmark_slowjson_dict();
+    auto rapidjson_result = nested::benchmark_rapidjson();
+    assert(static_dict_result == dict_result && dict_result == rapidjson_result);
+    std::cout << "JSON 输出一致性验证通过！\n";
     return 0;
 }
