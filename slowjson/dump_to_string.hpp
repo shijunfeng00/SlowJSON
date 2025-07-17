@@ -323,17 +323,36 @@ namespace slow_json {
     template<>
     struct DumpToString<dict>:public IDumpToString<DumpToString<dict>>{
         static void dump_impl(Buffer&buffer,const dict&object)SLOW_JSON_NOEXCEPT{
-            buffer+='{';
-            for(const auto&[k,v]:object._data){
-                DumpToString<const char*>::dump(buffer,k);
-                buffer+=':';
+            if(object.is_dict()) {
+                buffer += '{';
+                for (const auto &[k, v]: object._data) {
+                    DumpToString<const char *>::dump(buffer, k);
+                    buffer += ':';
+                    DumpToString<details::serializable_wrapper>::dump(buffer, v);
+                    buffer += ',';
+                }
+                if (buffer.back() == ',') {
+                    buffer.back() = '}';
+                } else {
+                    buffer += '}';
+                }
+            }else if(object.is_array()){
+                auto*list=static_cast<std::vector<details::serializable_wrapper>*>(object._data_ptr->value());
+                buffer += '[';
+                for(auto&v:*list){
+                    DumpToString<details::serializable_wrapper>::dump(buffer,v);
+                    buffer += ',';
+                }
+                if(buffer.back()==','){
+                    buffer.back()=']';
+                }else{
+                    buffer += ']';
+                }
+            }else if(object.is_fundamental()){
+                auto&v=*static_cast<details::serializable_wrapper*>(object._data_ptr->value());
                 DumpToString<details::serializable_wrapper>::dump(buffer,v);
-                buffer+=',';
-            }
-            if(buffer.back()==','){
-                buffer.back()='}';
-            }else {
-                buffer+='}';
+            }else if(object.empty()){
+                buffer+="null";
             }
         }
     };
