@@ -252,7 +252,7 @@ namespace slow_json {
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
         static void load_impl(T &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
             typename T::value_type object;
-            if (!dict.empty()) {
+            if (!dict.is_null()) {
                 LoadFromDict<typename T::value_type>::load(object, dict);
                 value.emplace(std::move(object));
             }

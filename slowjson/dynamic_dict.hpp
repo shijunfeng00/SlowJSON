@@ -190,7 +190,7 @@ namespace slow_json {
          * @brief 判断 JSON 是否为空（null）
          * @return 如果 JSON 是 null 则返回 true，否则返回 false
          */
-        [[nodiscard]] bool empty() const SLOW_JSON_NOEXCEPT {
+        [[nodiscard]] bool is_null() const SLOW_JSON_NOEXCEPT {
             if(!_value){
                 return true;
             }

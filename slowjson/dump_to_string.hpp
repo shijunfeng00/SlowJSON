@@ -351,7 +351,7 @@ namespace slow_json {
             }else if(object.is_fundamental()){
                 auto&v=*static_cast<details::serializable_wrapper*>(object._data_ptr->value());
                 DumpToString<details::serializable_wrapper>::dump(buffer,v);
-            }else if(object.empty()){
+            }else if(object.is_null()){
                 buffer+="null";
             }
         }

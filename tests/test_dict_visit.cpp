@@ -62,8 +62,8 @@ void test_dict_visit() {
     assert_with_message(std::abs(dict["z"].cast<float>() - 2.345f) < 1e-6, "z 键值应为 2.345");
 
     // 测试空数据
-    assert_with_message(dict["dd"]["d3"].empty(), "dd.d3 应为空");
-    assert_with_message(dict["dd"]["d4"].empty(), "dd.d4 应为空");
+    assert_with_message(dict["dd"]["d3"].is_null(), "dd.d3 应为空");
+    assert_with_message(dict["dd"]["d4"].is_null(), "dd.d4 应为空");
 
     // 测试列表访问
     assert_with_message(dict.contains("list"), "应包含 list 键");

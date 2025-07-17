@@ -205,7 +205,7 @@ namespace slow_json::details {
 
         /**
          * @brief 构造函数，绑定任意可序列化值（移动构造）
-         * @tparam T 值类型，需满足可序列化要求且非成员指针
+         * @tparam T 值类型，需满足可序列化要求且非成员指针f
          * @param value 要包装的值
          * @details 小对象（<=24字节）存储在内部缓冲区，大对象分配在堆上
          */
@@ -313,6 +313,7 @@ namespace slow_json::details {
          */
         void dump_fn(slow_json::Buffer &buffer) const SLOW_JSON_NOEXCEPT {
             void *ptr = is_heap_allocated() ? _buffer_ptr : (void *)&_buffer;
+            assert_with_message(ptr,"ptr地址不能为空");
             _dump_fn(buffer, ptr);
         }
 
@@ -643,11 +644,23 @@ namespace slow_json::details {
          * @throws 当为根字典时抛出异常
          */
         dict& operator=(std::vector<serializable_wrapper>&& value) SLOW_JSON_NOEXCEPT {
-            assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");
-            set_type(serializable_wrapper::LIST_TYPE);
-            *_data_ptr = serializable_wrapper(std::move(value));
-            set_copied(false);
-            return *this;
+            // assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");
+            if(get_type()==serializable_wrapper::ROOT_DICT_TYPE){
+                //自己是根字典，数据存储在_data中，先析构
+                _data.~vector();
+                delete get_key_to_index();
+                set_key_to_index(nullptr);
+                // 再申请新的指针，采用堆分配
+                _data_ptr = new serializable_wrapper{std::move(value)};
+                set_type(serializable_wrapper::LIST_TYPE);
+                set_copied(false);
+                return *this;
+            }else {
+                set_type(serializable_wrapper::LIST_TYPE);
+                *_data_ptr = serializable_wrapper(std::move(value));
+                set_copied(false);
+                return *this;
+            }
         }
 
         /**
@@ -695,7 +708,7 @@ namespace slow_json::details {
          * @details 和 JSON 的空对应，明确的数据为空 (null) 返回 true
          * @note 并非字段或数组为空的意思
          */
-        bool empty() const SLOW_JSON_NOEXCEPT {
+        bool is_null() const SLOW_JSON_NOEXCEPT {
             if (get_type() == serializable_wrapper::FUNDAMENTAL_TYPE) {
                 auto& data = *(serializable_wrapper*)_data_ptr;
                 slow_json::Buffer buffer;
