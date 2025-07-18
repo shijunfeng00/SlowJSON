@@ -1,9 +1,9 @@
 /**
  * @file dict.hpp
  * @brief 实现动态字典结构及相关序列化功能
- * @author hyzh
+ * @author shijunfeng
  * @date 2025/3/4
- * 
+ *
  * ======================== 核心组件说明 ========================
  * 本文件实现了动态字典结构，支持JSON格式的序列化/反序列化操作。
  * 主要组件：
@@ -12,30 +12,27 @@
  * 3. key_to_index - 键到索引的映射结构
  * 4. dict - 核心字典结构，支持嵌套字典和列表
  * 5. pair - 键值对基础单元
- * 
+ *
  * ======================== 设计亮点 ========================
  * 1. 内存优化：
+ *   - StaticString<>::str要求至少8对齐以保证可以存储元数据
  *   - serializable_wrapper:
  *     * 小对象(≤32B)使用内部缓冲区(SOO)
  *     * 大对象使用堆分配
- *     * 类型名称指针低3位存储元数据(类型+分配标志)
- * 
+ *     * 类型名称指针低3位存储元数据(类型+堆分配标志)
+ *
  *   - dict:
- *     * _key_to_index指针低3位存储:
+ *     * _key_to_index指针低4位存储（key_to_index强制要求16对齐）:
  *       - 类型信息(2位)
  *       - 键复制标志(1位)
- *     * 减少结构体大小16字节，提高缓存局部性
+ *       - 堆分配标志(1位)
+ *     * 将这些元数据嵌入到指针地址中，大幅减少结构体大小，提高缓存局部性
  * 
  * 2. 高效序列化：
  *   - 通过函数指针实现多态行为（不基于虚函数）
  *   - 延迟初始化键索引映射(key_to_index)
  * 
- * 3. 安全设计：
- *   - 移动语义避免深拷贝
- *   - 明确的类型检查(cast/as_type)
- *   - 根字典与嵌套字典区别处理
- * 
- * 4. 灵活存储：
+ * 3. 灵活存储：
  *   - 支持基础类型、列表、嵌套字典、大量STL容器及容器适配器
  * 
  * ======================== 使用示例 ========================
@@ -43,7 +40,7 @@
  *    dict d = {
  *        {"name", "John"},
  *        {"age", 30},
- *        {"classes",{"Chinese","English","Mash"}}
+ *        {"classes",{"Chinese","English","Mash"}},
  *        {"scores", std::vector{90, 85, 95}},
  *        {"details",{
  *            {"location","Sichuan"},
@@ -60,7 +57,7 @@
  *    if (d["age"].is_fundamental()) {
  *        // 处理基础类型
  *    }
- *  4.遍历
+ *  4. 遍历
  *    for(auto&[k,v]:d["details"].as_dict()){
  *        std::cout<<k<<" ";
  *        slow_json::visit(v,[](const auto&&value){std::cout<<v<<std::endl;});
@@ -175,14 +172,13 @@ namespace slow_json::details {
         template<typename T>
         requires(std::is_member_pointer_v<T>)
         constexpr serializable_wrapper(const T &value):serializable_wrapper{field_wrapper{value}} { // NOLINT(google-explicit-constructor)
-
         }
 
         /**
          * @brief 构造函数，绑定任意可序列化值（复制构造）
          * @tparam T 值类型，需满足可序列化要求且非成员指针
          * @param value 要包装的值
-         * @details 小对象（<=24字节）存储在内部缓冲区，大对象分配在堆上
+         * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
          */
         template<typename T>
         requires(!std::is_member_pointer_v<T>)
@@ -205,9 +201,9 @@ namespace slow_json::details {
 
         /**
          * @brief 构造函数，绑定任意可序列化值（移动构造）
-         * @tparam T 值类型，需满足可序列化要求且非成员指针f
+         * @tparam T 值类型，需满足可序列化要求且非成员指针
          * @param value 要包装的值
-         * @details 小对象（<=24字节）存储在内部缓冲区，大对象分配在堆上
+         * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
          */
         template<typename T>
         requires(!std::is_member_pointer_v<T> && std::is_rvalue_reference_v<T &&>)
@@ -444,7 +440,7 @@ namespace slow_json::details {
         }
     };
 
-    class key_to_index {
+    class alignas(16) key_to_index {
     private:
         std::map<std::string_view, std::size_t, std::less<>> index_map;
 
@@ -526,16 +522,16 @@ namespace slow_json::details {
         }
     };
 
-/**
-     * @brief 动态字典结构，用于存储键值对或包装值
-     * @details 提供键值对的存储、序列化和反序列化功能，支持动态数据操作。
-     *          对于子字典对象，不会进行数据拷贝，也不应析构任何数据。
-     *          使用赋值操作（如 dict["list"]={1,2,3}）会自动释放原有数据指针，操作安全。
-     *          优化设计：将 `_type`（2 位）和 `_copied`（1 位）嵌入到 `_key_to_index` 指针的低 3 位中，
-     *          利用 64 位系统中指针 8 字节对齐的特性（低 3 位为 0），减少内存占用。
-     *          此优化将结构体大小减少16字节，提高缓存局部性。
-     *          位运算开销较小，但相比于缓存未命中，额外新增的开销是可以接受的。
-     */
+    /**
+      * @brief 动态字典结构，用于存储键值对或包装值
+      * @details 提供键值对的存储、序列化和反序列化功能，支持动态数据操作。
+      *          对于子字典对象，不会进行数据拷贝，也不应析构任何数据。
+      *          使用赋值操作（如 dict["list"]={1,2,3}）会自动释放原有数据指针，操作安全。
+      *          优化设计：将 `_type`（2 位）、`_copied`（1 位）和 `_is_heap_allocated`（1 位）嵌入到 `_key_to_index` 指针的低 4 位中，
+      *          利用指针 16 字节对齐的特性（低 4 位为 0），减少内存占用。
+      *          此优化将结构体大小减少，移除 bool _is_heap_allocated，提高缓存局部性。
+      *          位运算开销较小，相比于缓存未命中，额外新增的开销是可以接受的。
+      */
     struct dict {
         friend struct pair;
         friend struct LoadFromDict<dict>;
@@ -548,15 +544,25 @@ namespace slow_json::details {
             serializable_wrapper _value; ///< 值，序列化包装器形式
         };
 
+        // 位掩码定义
+        static constexpr uintptr_t TYPE_MASK = 0x6;        ///< 中间两位 - 类型信息 (0b0110)
+        static constexpr uintptr_t COPIED_MASK = 0x1;      ///< 最低位 - 复制标志 (0b0001)
+        static constexpr uintptr_t HEAP_ALLOCATED_MASK = 0x8; ///< 第 4 位 - 堆分配标志 (0b1000)
+        static constexpr uintptr_t CLEAR_MASK = ~0xF;      ///< 清除低 4 位的掩码
+
+        // 确保 dict 结构体至少 16 字节对齐
+
+
         /**
          * @brief 构造函数，使用初始化列表构造根字典
          * @param data 初始化列表，包含键值对
          * @details 使用移动语义将键值对列表存储到字典中，设置类型为 ROOT_DICT_TYPE
          */
         dict(std::initializer_list<pair>&& data) :
-                _key_to_index(nullptr),_data_ptr{nullptr} {
+                _key_to_index(nullptr) {
             set_type(serializable_wrapper::ROOT_DICT_TYPE);
             set_copied(false);
+            set_heap_allocated(false);
             new (&_data) std::vector<pair>(data);
         }
 
@@ -567,13 +573,14 @@ namespace slow_json::details {
          * @param data 键值对参数包
          * @details 将参数包中的键值对转换为 pair 对象并存储，设置类型为 ROOT_DICT_TYPE
          */
-        template<typename... K,typename... V>
+        template<typename... K, typename... V>
         requires ((concepts::static_string<K> && ...) ||
-                 (concepts::string<K> && ...))
+                  (concepts::string<K> && ...))
         constexpr dict(std::pair<K, V>&&... data)   // NOLINT(google-explicit-constructor)
-                : _key_to_index(nullptr),_data_ptr{nullptr} {
+                : _key_to_index(nullptr) {
             set_type(serializable_wrapper::ROOT_DICT_TYPE);
             set_copied(false);
+            set_heap_allocated(false);
             new (&_data) std::vector<pair>{{pair{std::move(data.first), std::move(data.second)}...}};
         }
 
@@ -590,9 +597,11 @@ namespace slow_json::details {
          */
         dict(dict&& other) noexcept :
                 _key_to_index(nullptr) {
-            set_type(other.get_type());
+            auto other_type = other.get_type();
+            set_type(other_type);
             set_copied(other.get_copied());
-            if (other.get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            set_heap_allocated(other.is_heap_allocated());
+            if (other_type == serializable_wrapper::ROOT_DICT_TYPE) {
                 new (&_data) std::vector<pair>(std::move(other._data));
                 set_key_to_index(other.get_key_to_index());
                 other.set_key_to_index(nullptr);
@@ -602,6 +611,7 @@ namespace slow_json::details {
                 other._data_ptr = nullptr;
                 other.set_key_to_index(nullptr);
             }
+            other.set_heap_allocated(false);
         }
 
         /**
@@ -609,14 +619,20 @@ namespace slow_json::details {
          * @details 释放键值对数据或包装值的资源，清理 _key_to_index
          */
         ~dict() {
-            if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE || type == serializable_wrapper::DICT_TYPE) {
                 if (get_copied()) {
                     for (auto &it : _data) {
                         delete[] reinterpret_cast<_pair*>(&it)->_key;
                         reinterpret_cast<_pair*>(&it)->_key = nullptr;
                     }
                 }
+            }
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
                 _data.~vector();
+                delete get_key_to_index();
+            } else if (is_heap_allocated()) {
+                delete _data_ptr;
                 delete get_key_to_index();
             }
         }
@@ -626,13 +642,25 @@ namespace slow_json::details {
          * @param value 序列化包装器
          * @return dict& 当前对象的引用
          * @details 清理当前资源，构造新的包装值，更新类型
-         * @throws 当为根字典时抛出异常
          */
         dict& operator=(serializable_wrapper&& value) SLOW_JSON_NOEXCEPT {
-            assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");
-            set_type(value.get_value_element_type());
-            *_data_ptr = std::move(value);
-            set_copied(false);
+            auto current_type = get_type();
+            if (current_type == serializable_wrapper::ROOT_DICT_TYPE) {
+                // 当前为根字典，清理 _data 和 _key_to_index
+                _data.~vector();
+                delete get_key_to_index();
+                set_key_to_index(nullptr);
+                // 分配新的堆内存
+                _data_ptr = new serializable_wrapper{std::move(value)};
+                set_heap_allocated(true);
+                set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+                set_copied(false);
+            } else {
+                // 非根字典，直接修改 *_data_ptr
+                *_data_ptr = std::move(value);
+                set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+                set_copied(false);
+            }
             return *this;
         }
 
@@ -641,26 +669,26 @@ namespace slow_json::details {
          * @param value 序列化包装器列表
          * @return dict& 当前对象的引用
          * @details 清理当前资源，构造新的列表，更新类型
-         * @throws 当为根字典时抛出异常
          */
         dict& operator=(std::vector<serializable_wrapper>&& value) SLOW_JSON_NOEXCEPT {
-            // assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");
-            if(get_type()==serializable_wrapper::ROOT_DICT_TYPE){
-                //自己是根字典，数据存储在_data中，先析构
+            auto current_type = get_type();
+            if (current_type == serializable_wrapper::ROOT_DICT_TYPE) {
+                // 当前为根字典，清理 _data 和 _key_to_index
                 _data.~vector();
                 delete get_key_to_index();
                 set_key_to_index(nullptr);
-                // 再申请新的指针，采用堆分配
+                // 分配新的堆内存
                 _data_ptr = new serializable_wrapper{std::move(value)};
+                set_heap_allocated(true);
                 set_type(serializable_wrapper::LIST_TYPE);
                 set_copied(false);
-                return *this;
-            }else {
-                set_type(serializable_wrapper::LIST_TYPE);
+            } else {
+                // 非根字典，直接修改 *_data_ptr
                 *_data_ptr = serializable_wrapper(std::move(value));
+                set_type(serializable_wrapper::LIST_TYPE);
                 set_copied(false);
-                return *this;
             }
+            return *this;
         }
 
         /**
@@ -668,35 +696,75 @@ namespace slow_json::details {
          * @param value 字典
          * @return dict& 当前对象的引用
          * @details 清理当前资源，移动字典数据，更新类型
-         * @throws 当为根字典时抛出异常
          */
-        dict& operator=(dict&& other) SLOW_JSON_NOEXCEPT {            
-            if (this != &other) {  
-                assert_with_message(get_type() != serializable_wrapper::ROOT_DICT_TYPE, "根字典对象不允许此操作");     
-                // 如果对面是根字典，而自己非根字典
-                // 则类型为DICT_TYPE，数据仍然存储在_data_ptr中
-                auto type=other.get_type();
-                set_type(type==serializable_wrapper::ROOT_DICT_TYPE?serializable_wrapper::DICT_TYPE:type);
-                set_copied(other.get_copied());
-                *_data_ptr=serializable_wrapper(std::move(other));
+        dict& operator=(dict&& other) SLOW_JSON_NOEXCEPT {
+            if (this != &other) {
+                if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+                    // 自己是根字典，情况复杂
+                    if (other.get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+                        // 对面也是根字典，执行移动构造
+                        if (get_copied()) {
+                            for (auto &it : _data) {
+                                delete[] reinterpret_cast<_pair*>(&it)->_key;
+                                reinterpret_cast<_pair*>(&it)->_key = nullptr;
+                            }
+                        }
+                        delete get_key_to_index();
+                        set_key_to_index(other.get_key_to_index());
+                        _data = std::move(other._data);
+                        other.set_key_to_index(nullptr);
+                        if (other.get_copied()) {
+                            other.set_copied(false);
+                            set_copied(true);
+                        } else {
+                            set_copied(false); // 接管所有权，避免 double free
+                        }
+                        set_type(serializable_wrapper::ROOT_DICT_TYPE);
+                        set_heap_allocated(false);
+                    } else {
+                        // 对面非根字典，析构 _data 换 _data_ptr
+                        _data.~vector();
+                        delete get_key_to_index();
+                        set_key_to_index(nullptr);
+                        set_copied(false);
+                        set_type(other.get_type());
+                        _data_ptr = new serializable_wrapper(std::move(other));
+                        set_heap_allocated(true);
+                    }
+                } else {
+                    // 自己非根字典
+                    auto type = other.get_type();
+                    set_type(type == serializable_wrapper::ROOT_DICT_TYPE ? serializable_wrapper::DICT_TYPE : type);
+                    set_key_to_index(other.get_key_to_index());
+                    other.set_key_to_index(nullptr);
+                    if (other.get_copied()) {
+                        other.set_copied(false);
+                        set_copied(true);
+                    } else {
+                        set_copied(false); // 接管所有权，避免 double free
+                    }
+                    *_data_ptr = serializable_wrapper(std::move(other));
+                    set_heap_allocated(is_heap_allocated() || other.is_heap_allocated());
+                }
             }
             return *this;
         }
 
         /**
          * @brief 检查是否包含指定键
-         * @param key 键 
+         * @param key 键
          * @return bool 是否包含
          * @details 对于根字典，检查键值对；对于嵌套字典，委托给包装值
          */
-        bool contains(const char* key) const SLOW_JSON_NOEXCEPT { // NOLINT(clang-diagnostic-recursive-function)
+        bool contains(const char* key) const SLOW_JSON_NOEXCEPT {
             if (!key) {
                 return false;
             }
-            if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
                 initialize_key_to_index();
                 return get_key_to_index()->contains(key);
-            } else if (get_type() == serializable_wrapper::DICT_TYPE) {
+            } else if (type == serializable_wrapper::DICT_TYPE) {
                 return static_cast<dict*>(_data_ptr->value())->contains(key);
             }
             return false;
@@ -706,7 +774,6 @@ namespace slow_json::details {
          * @brief 检查字典/子字典是否为空
          * @return bool 是否为空
          * @details 和 JSON 的空对应，明确的数据为空 (null) 返回 true
-         * @note 并非字段或数组为空的意思
          */
         bool is_null() const SLOW_JSON_NOEXCEPT {
             if (get_type() == serializable_wrapper::FUNDAMENTAL_TYPE) {
@@ -728,11 +795,12 @@ namespace slow_json::details {
         dict operator[](T key) SLOW_JSON_NOEXCEPT {
             auto value_fn = [](pair& p) { return &reinterpret_cast<_pair*>(&p)->_value; };
             assert_with_message(key != nullptr, "key 为空指针");
-            if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
                 initialize_key_to_index();
                 assert_with_message(get_key_to_index()->contains(key), "字典中不存在该字段:'%s'", (char*)key);
                 return dict{value_fn(_data[get_key_to_index()->at(key)])};
-            } else if (get_type() == serializable_wrapper::DICT_TYPE) {
+            } else if (type == serializable_wrapper::DICT_TYPE) {
                 return static_cast<dict*>(_data_ptr->value())->operator[](key);
             }
             assert_with_message(false, "非字典类型，无法通过键访问数据");
@@ -749,7 +817,7 @@ namespace slow_json::details {
             assert_with_message(get_type() == serializable_wrapper::LIST_TYPE, "非列表类型，无法通过整数下标访问数据");
             auto& list_data = *static_cast<std::vector<serializable_wrapper>*>(_data_ptr->value());
             assert_with_message(index < list_data.size(), "数组越界访问:%zu >= %zu", index, list_data.size());
-            return dict{&list_data[index]};
+            return dict{const_cast<serializable_wrapper*>(&list_data[index])};
         }
 
         /**
@@ -804,7 +872,8 @@ namespace slow_json::details {
          * @details 对嵌套字典和根字典均返回 true
          */
         bool is_dict() const noexcept {
-            return get_type() == serializable_wrapper::DICT_TYPE || get_type() == serializable_wrapper::ROOT_DICT_TYPE;
+            auto type = get_type();
+            return type == serializable_wrapper::DICT_TYPE || type == serializable_wrapper::ROOT_DICT_TYPE;
         }
 
         /**
@@ -812,13 +881,14 @@ namespace slow_json::details {
          * @return std::size_t 元素数量
          * @throws 当类型不正确时抛出异常
          */
-        std::size_t size() const SLOW_JSON_NOEXCEPT { // NOLINT(clang-diagnostic-recursive-function)
-            assert_with_message(get_type() != serializable_wrapper::FUNDAMENTAL_TYPE, "非列表或字典类型，无法通过整数下标访问数据");
-            if (get_type() == serializable_wrapper::LIST_TYPE) {
+        std::size_t size() const SLOW_JSON_NOEXCEPT {
+            auto type = get_type();
+            assert_with_message(type != serializable_wrapper::FUNDAMENTAL_TYPE, "非列表或字典类型，无法通过整数下标访问数据");
+            if (type == serializable_wrapper::LIST_TYPE) {
                 return static_cast<std::vector<serializable_wrapper> *>(_data_ptr->value())->size();
-            } else if (get_type() == serializable_wrapper::DICT_TYPE) {
+            } else if (type == serializable_wrapper::DICT_TYPE) {
                 return static_cast<dict *>(_data_ptr->value())->size();
-            } else if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            } else if (type == serializable_wrapper::ROOT_DICT_TYPE) {
                 initialize_key_to_index();
                 return _data.size();
             }
@@ -846,7 +916,8 @@ namespace slow_json::details {
             auto value_fn = [](pair& p) { return &reinterpret_cast<_pair*>(&p)->_value; };
             assert_with_message(is_dict(), "非字典类型，无法转换为 std::unordered_map");
             std::unordered_map<const char*, dict> result;
-            if (get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
                 for (auto& p : _data) {
                     result.emplace(_pair_key_fn(p), dict{value_fn(p)});
                 }
@@ -878,6 +949,7 @@ namespace slow_json::details {
          * @details 为每个键值对的键创建副本，设置复制标志
          */
         void copy_key() {
+            assert_with_message(!get_copied(), "重复调用 发生内存泄漏");
             assert_with_message(get_type() == serializable_wrapper::ROOT_DICT_TYPE, "不正确的类型");
             for (auto& it : _data) {
                 const char* key = _pair_key_fn(it);
@@ -890,11 +962,6 @@ namespace slow_json::details {
         }
 
     protected:
-        // 位掩码定义
-        static constexpr uintptr_t TYPE_MASK = 0x6;    ///< 中间两位 - 类型信息 (0b0110)
-        static constexpr uintptr_t COPIED_MASK = 0x1;  ///< 最低位 - 复制标志 (0b0001)
-        static constexpr uintptr_t CLEAR_MASK = ~0x7;  ///< 清除低 3 位的掩码
-
         /**
          * @brief 内部构造函数，用于构造子节点
          * @param data 序列化包装器指针
@@ -904,6 +971,7 @@ namespace slow_json::details {
                 _key_to_index(nullptr) {
             set_type(data ? data->get_value_element_type() : serializable_wrapper::FUNDAMENTAL_TYPE);
             set_copied(false);
+            set_heap_allocated(false);
             _data_ptr = data;
         }
 
@@ -932,7 +1000,7 @@ namespace slow_json::details {
         /**
          * @brief 获取存储的类型信息
          * @return serializable_wrapper::ElementType 类型枚举值
-         * @details 从 _key_to_index 指针的低 3 位中提取类型信息（第 2-3 位）
+         * @details 从 _key_to_index 指针的低 4 位中提取类型信息（第 2-3 位）
          */
         [[nodiscard]] serializable_wrapper::ElementType get_type() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
@@ -942,7 +1010,7 @@ namespace slow_json::details {
         /**
          * @brief 设置类型信息
          * @param type 类型枚举值
-         * @details 将类型信息（2 位）嵌入到 _key_to_index 指针的低 3 位（第 2-3 位）
+         * @details 将类型信息（2 位）嵌入到 _key_to_index 指针的低 4 位（第 2-3 位）
          */
         void set_type(serializable_wrapper::ElementType type) SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
@@ -954,7 +1022,7 @@ namespace slow_json::details {
         /**
          * @brief 获取复制标志
          * @return bool 是否已复制键
-         * @details 从 _key_to_index 指针的低 3 位中提取复制标志（最低位）
+         * @details 从 _key_to_index 指针的低 4 位中提取复制标志（最低位）
          */
         [[nodiscard]] bool get_copied() const SLOW_JSON_NOEXCEPT {
             return reinterpret_cast<uintptr_t>(_key_to_index) & COPIED_MASK;
@@ -963,7 +1031,7 @@ namespace slow_json::details {
         /**
          * @brief 设置复制标志
          * @param value 是否已复制键
-         * @details 将复制标志（1 位）嵌入到 _key_to_index 指针的低 3 位（最低位）
+         * @details 将复制标志（1 位）嵌入到 _key_to_index 指针的低 4 位（最低位）
          */
         void set_copied(bool value) SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
@@ -972,30 +1040,50 @@ namespace slow_json::details {
         }
 
         /**
+         * @brief 获取堆分配标志
+         * @return bool 是否为堆分配
+         * @details 从 _key_to_index 指针的低 4 位中提取堆分配标志（第 4 位）
+         */
+        [[nodiscard]] bool is_heap_allocated() const SLOW_JSON_NOEXCEPT {
+            return reinterpret_cast<uintptr_t>(_key_to_index) & HEAP_ALLOCATED_MASK;
+        }
+
+        /**
+         * @brief 设置堆分配标志
+         * @param value 是否为堆分配
+         * @details 将堆分配标志（1 位）嵌入到 _key_to_index 指针的低 4 位（第 4 位）
+         */
+        void set_heap_allocated(bool value) SLOW_JSON_NOEXCEPT {
+            auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
+            ptr = value ? (ptr | HEAP_ALLOCATED_MASK) : (ptr & ~HEAP_ALLOCATED_MASK);
+            _key_to_index = reinterpret_cast<key_to_index*>(ptr);
+        }
+
+        /**
          * @brief 获取键到索引映射指针
          * @return key_to_index* 指向键到索引映射的指针
-         * @details 清除 _key_to_index 指针低 3 位的元数据，返回实际指针
+         * @details 清除 _key_to_index 指针低 4 位的元数据，返回实际指针
          */
         [[nodiscard]] key_to_index* get_key_to_index() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
-            ptr &= CLEAR_MASK; // 清除低 3 位
-            assert_with_message(ptr % 8 == 0, "指针地址非 8 对齐");
+            ptr &= CLEAR_MASK; // 清除低 4 位
+            assert_with_message(ptr % 16 == 0 || ptr == 0, "指针地址非 16 对齐");
             return reinterpret_cast<key_to_index*>(ptr);
         }
 
         /**
          * @brief 设置键到索引映射指针
          * @param ptr 键到索引映射指针
-         * @details 保留低 3 位的元数据，将新指针嵌入
+         * @details 保留低 4 位的元数据，将新指针嵌入
          */
-        void set_key_to_index(key_to_index* ptr)const SLOW_JSON_NOEXCEPT {
+        void set_key_to_index(key_to_index* ptr) const SLOW_JSON_NOEXCEPT {
             auto old_metadata = reinterpret_cast<uintptr_t>(_key_to_index) & ~CLEAR_MASK;
             auto new_ptr = reinterpret_cast<uintptr_t>(ptr);
-            assert_with_message(new_ptr % 8 == 0, "新指针地址非 8 对齐");
+            assert_with_message(new_ptr % 16 == 0 || new_ptr == 0, "新指针地址非 16 对齐");
             _key_to_index = reinterpret_cast<key_to_index*>(new_ptr | old_metadata);
         }
 
-        mutable key_to_index* _key_to_index; ///< 键到索引映射，延迟初始化，低 3 位存储类型和复制标志
+        mutable key_to_index* _key_to_index; ///< 键到索引映射，延迟初始化，低 4 位存储类型、复制标志和堆分配标志
         union {
             std::vector<pair> _data; ///< 根字典的键值对
             serializable_wrapper* _data_ptr; ///< 其他类型的包装值
@@ -1039,11 +1127,11 @@ namespace slow_json::details {
         constexpr pair(const char *key, dict &&value)
                 : _key{key}, _value{std::move(value)} {}
 
-        pair(const pair&p):_key{p._key},_value{std::move(p._value)}{
-            p._key=nullptr;
+        pair(const pair&p):_key{p._key},_value{p._value} {
+            p._key = nullptr;
         }
-        pair(pair&&p)noexcept:_key{p._key},_value{std::move(p._value)}{
-            p._key=nullptr;
+        pair(pair&&p)noexcept:_key{p._key},_value{std::move(p._value)} {
+            p._key = nullptr;
         }
 
     private:

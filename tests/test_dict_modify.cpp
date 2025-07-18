@@ -117,4 +117,62 @@ void test_dict_modify() {
     } catch (...) {
         assert_with_message(false, "非数组类型的索引修改应抛出 std::runtime_error 而非其他异常");
     }
+
+    // 测试根字典赋值 - 基本类型
+    slow_json::dict root_dict{{"key1", 42}, {"key2", "test"}};
+    root_dict = 100;
+    assert_with_message(root_dict.is_fundamental(), "根字典赋值后应为基本类型");
+    assert_with_message(root_dict.cast<int>() == 100, "根字典赋值后应为 100");
+//
+    // 测试根字典赋值 - 列表
+    root_dict = {1, 2, 3, 4};
+    assert_with_message(root_dict.is_array(), "根字典赋值后应为列表类型");
+    assert_with_message(root_dict.size() == 4, "根字典赋值后列表长度应为 4");
+    assert_with_message(root_dict[0].cast<int>() == 1, "根字典赋值后列表[0] 应为 1");
+    assert_with_message(root_dict[3].cast<int>() == 4, "根字典赋值后列表[3] 应为 4");
+
+    // 测试根字典赋值 - 字典
+    slow_json::dict another_dict{{"new_key", 999}, {"another_key", "value"}};
+    root_dict = std::move(another_dict);
+    assert_with_message(root_dict.is_dict(), "根字典赋值后应为字典类型");
+    assert_with_message(root_dict.contains("new_key"), "根字典赋值后应包含 new_key 键");
+    assert_with_message(root_dict["new_key"].cast<int>() == 999, "根字典赋值后 new_key 应为 999");
+    assert_with_message(std::strcmp(root_dict["another_key"].cast<const char*>(), "value") == 0, "根字典赋值后 another_key 应为 value");
+
+    // 测试根字典到根字典的赋值
+    slow_json::dict dict1{{"a", 1}, {"b", "test"}};
+    slow_json::dict dict2{{"c", 3}, {"d", "value"}};
+    dict1.copy_key();
+    dict1 = std::move(dict2);
+    assert_with_message(dict1.is_dict(), "根字典赋值后应为字典类型");
+    assert_with_message(dict1.contains("c"), "根字典赋值后应包含 c 键");
+    assert_with_message(dict1["c"].cast<int>() == 3, "根字典赋值后 c 应为 3");
+    assert_with_message(std::strcmp(dict1["d"].cast<const char*>(), "value") == 0, "根字典赋值后 d 应为 value");
+    assert_with_message(!dict1.contains("a"), "根字典赋值后不应包含 a 键");
+
+    // 测试根字典到非根字典的赋值
+    slow_json::dict nested_dict{
+            {"nested", {
+                               {"inner", 42},
+                               {"inner4",45}
+                       }},
+            {"nested2",4}
+    };
+    slow_json::dict root_dict2{{"key", 123}};
+    nested_dict["nested"] = std::move(root_dict2);
+    assert_with_message(nested_dict["nested"].is_dict(), "嵌套字典赋值为根字典后应为字典类型");
+    assert_with_message(nested_dict["nested"].contains("key"), "嵌套字典赋值后应包含 key 键");
+    assert_with_message(nested_dict["nested"]["key"].cast<int>() == 123, "嵌套字典赋值后 key 应为 123");
+
+    // 测试非根字典到根字典的赋值
+    slow_json::dict root_dict3{
+            std::pair{"outer",
+                      slow_json::list{{"inner", 456}}
+            }
+    };
+    slow_json::dict nested_dict2{{"inner_key", 789}};
+    root_dict3 = std::move(nested_dict2);
+    assert_with_message(root_dict3.is_dict(), "根字典赋值为非根字典后应为字典类型");
+    assert_with_message(root_dict3.contains("inner_key"), "根字典赋值后应包含 inner_key 键");
+    assert_with_message(root_dict3["inner_key"].cast<int>() == 789, "根字典赋值后 inner_key 应为 789");
 }

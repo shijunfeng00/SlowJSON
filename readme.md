@@ -696,16 +696,18 @@ SlowJSON 通过 C++20 `concepts` 提供类型安全和扩展性，支持以下�
 
 ## 性能评估
 
-测试环境：AMD EPYC 7C13 64-Core Processor（2.0 GHz, 30 核, 64-bit, L2 Cache 64KB）。
+### 测试环境：
+* 系统 : Ubuntu20.04
+* CPU : AMD EPYC 7C13 64-Core Processor（2.0 GHz, 30 核, 64-bit, L2 Cache 64KB）。
 
 | 场景                   | static_dict | dict   | RapidJSON |
 |------------------------|-------------|--------|-----------|
-| 简单 JSON 序列化       | 58 ms       | 208 ms | 477 ms    |
-| 复杂嵌套 JSON 序列化   | 192 ms      | 475 ms | 770 ms    |
-| 简单 C++ 对象序列化    | 149 ms      | N/A    | 1246 ms   |
-| 简单 C++ 对象反序列化  | 1593 ms     | N/A    | 1176 ms   |
-| 复杂 C++ 对象序列化    | 246 ms      | N/A    | 711 ms    |
-| 复杂 C++ 对象反序列化  | 709 ms      | N/A    | 593 ms    |
+| 简单 JSON 序列化       | 57 ms       | 210 ms | 457 ms    |
+| 复杂嵌套 JSON 序列化   | 188 ms      | 485 ms | 779 ms    |
+| 简单 C++ 对象序列化    | 152 ms      | N/A    | 1198 ms   |
+| 简单 C++ 对象反序列化  | 1621 ms     | N/A    | 1168 ms   |
+| 复杂 C++ 对象序列化    | 198 ms      | N/A    | 706 ms    |
+| 复杂 C++ 对象反序列化  | 670 ms      | N/A    | 598 ms    |
 
 ## 优势
 
