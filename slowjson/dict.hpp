@@ -1041,6 +1041,8 @@ namespace slow_json::details {
 
         /**
          * @brief 获取堆分配标志
+         * @details operator=中可能会存在堆分配_data_ptr的情况
+         * @note 和serializable_wrapper::is_heap_allocated语义是不同的
          * @return bool 是否为堆分配
          * @details 从 _key_to_index 指针的低 4 位中提取堆分配标志（第 4 位）
          */
@@ -1050,6 +1052,8 @@ namespace slow_json::details {
 
         /**
          * @brief 设置堆分配标志
+         * @details operator=中可能会存在堆分配_data_ptr的情况
+         * @note 和serializable_wrapper::is_heap_allocated语义是不同的
          * @param value 是否为堆分配
          * @details 将堆分配标志（1 位）嵌入到 _key_to_index 指针的低 4 位（第 4 位）
          */
