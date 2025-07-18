@@ -8,4 +8,5 @@ int main(){
     benchmark_nested();
     benchmark_simple_serialization_deserialization();
     benchmark_nested_serialization_deserialization();
+    benchmark_data_access();
 }

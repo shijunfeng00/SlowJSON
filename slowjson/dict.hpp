@@ -442,7 +442,7 @@ namespace slow_json::details {
 
     class alignas(16) key_to_index {
     private:
-        std::map<std::string_view, std::size_t, std::less<>> index_map;
+        std::unordered_map<std::string_view, std::size_t> index_map;
 
     public:
         /**

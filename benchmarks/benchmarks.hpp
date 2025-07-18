@@ -8,4 +8,5 @@ int benchmark_simple();
 int benchmark_nested();
 int benchmark_simple_serialization_deserialization();
 int benchmark_nested_serialization_deserialization();
+int benchmark_data_access();
 #endif //SLOWJSON_BENCHMARKS_HPP
