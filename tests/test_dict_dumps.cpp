@@ -17,7 +17,7 @@ void test_dict_dumps() {
 
     slow_json::dict dict{
             std::pair{"test", 123},
-            std::pair{"name", "shijunfeng"},
+            std::pair{"name", "{shijunfeng}"},
             std::pair{"tuple", slow_json::static_dict{
                     std::pair{"haha", "wawa"},
                     std::pair{"single", "boy"}
@@ -26,7 +26,7 @@ void test_dict_dumps() {
     slow_json::dumps(buffer, dict, 4);
     assert_with_message(buffer.string() == R"({
     "test":123,
-    "name":"shijunfeng",
+    "name":"{shijunfeng}",
     "tuple":{
         "haha":"wawa",
         "single":"boy"
