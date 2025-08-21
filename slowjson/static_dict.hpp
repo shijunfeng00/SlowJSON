@@ -26,7 +26,7 @@ namespace slow_json {
         }
 
         /**
-         * 简直对数量
+         * 键值对数量
          */
         constexpr static std::size_t size_v = std::tuple_size_v<std::tuple<Args...>>;
 

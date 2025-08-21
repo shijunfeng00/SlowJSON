@@ -27,14 +27,14 @@
  *       - 键复制标志(1位)
  *       - 堆分配标志(1位)
  *     * 将这些元数据嵌入到指针地址中，大幅减少结构体大小，提高缓存局部性
- * 
+ *
  * 2. 高效序列化：
  *   - 通过函数指针实现多态行为（不基于虚函数）
  *   - 延迟初始化键索引映射(key_to_index)
- * 
+ *
  * 3. 灵活存储：
  *   - 支持基础类型、列表、嵌套字典、大量STL容器及容器适配器
- * 
+ *
  * ======================== 使用示例 ========================
  * 1. 创建字典：
  *    dict d = {
@@ -48,11 +48,11 @@
  *        }},
  *        {"others",nullptr}
  *    };
- * 
+ *
  * 2. 访问元素：
  *    auto name = d["name"].cast<std::string>();
  *    auto device = d["details"]["device"].cast<const char*>();
- * 
+ *
  * 3. 类型检查：
  *    if (d["age"].is_fundamental()) {
  *        // 处理基础类型
@@ -71,7 +71,7 @@
 #include <map>
 #include <unordered_map>
 #include "load_from_dict_interface.hpp"
-
+#include "key_to_index.hpp"
 namespace slow_json::details {
     struct pair;
     struct dict;
@@ -353,7 +353,6 @@ namespace slow_json::details {
     private:
         static constexpr std::size_t buffer_size = 32; ///< 小对象缓冲区大小
 
-        // 位掩码定义
         static constexpr uintptr_t HEAP_MASK = 0x1;    // 最低位 - 堆分配标志
         static constexpr uintptr_t TYPE_MASK = 0x6;    // 中间两位 - 类型信息 (0b0110)
         static constexpr uintptr_t CLEAR_MASK = ~0x7;  // 清除低3位的掩码
@@ -440,88 +439,6 @@ namespace slow_json::details {
         }
     };
 
-    class alignas(16) key_to_index {
-    private:
-        std::unordered_map<std::string_view, std::size_t> index_map;
-
-    public:
-        /**
-         * @brief 默认构造函数
-         * @details 初始化空的键到索引映射
-         */
-        key_to_index() = default;
-
-        /**
-         * @brief 拷贝构造函数（禁用）
-         * @details 禁用拷贝以防止意外复制
-         */
-        key_to_index(const key_to_index&) = delete;
-
-        /**
-         * @brief 拷贝赋值运算符（禁用）
-         * @details 禁用拷贝赋值以防止意外复制
-         */
-        key_to_index& operator=(const key_to_index&) = delete;
-
-        /**
-         * @brief 移动构造函数
-         * @details 转移键到索引映射
-         */
-        key_to_index(key_to_index&&) = default;
-
-        /**
-         * @brief 移动赋值运算符（禁用）
-         * @details 禁用移动赋值以确保一致性
-         */
-        key_to_index& operator=(key_to_index&&) = delete;
-
-        /**
-         * @brief 插入键和索引
-         * @param key 键
-         * @param index 索引值
-         * @details 将键映射到指定索引
-         */
-        void insert(const char* key, std::size_t index) SLOW_JSON_NOEXCEPT {
-            index_map[key] = index;
-        }
-
-        /**
-         * @brief 获取键对应的索引
-         * @param key 键
-         * @return std::size_t 索引值
-         * @details 返回键对应的索引值
-         */
-        std::size_t at(const char* key) SLOW_JSON_NOEXCEPT {
-            return index_map[key];
-        }
-
-        /**
-         * @brief 检查是否包含键
-         * @param key 键
-         * @return bool 是否包含
-         * @details 检查键是否存在于映射中
-         */
-        bool contains(const char* key) SLOW_JSON_NOEXCEPT {
-            return index_map.contains(key);
-        }
-
-        /**
-         * @brief 获取映射大小
-         * @return std::size_t 键值对数量
-         */
-        [[nodiscard]] std::size_t size() const SLOW_JSON_NOEXCEPT {
-            return index_map.size();
-        }
-
-        /**
-         * @brief 检查映射是否为空
-         * @return bool 是否为空
-         */
-        [[nodiscard]] bool empty() const SLOW_JSON_NOEXCEPT {
-            return index_map.empty();
-        }
-    };
-
     /**
       * @brief 动态字典结构，用于存储键值对或包装值
       * @details 提供键值对的存储、序列化和反序列化功能，支持动态数据操作。
@@ -544,14 +461,10 @@ namespace slow_json::details {
             serializable_wrapper _value; ///< 值，序列化包装器形式
         };
 
-        // 位掩码定义
         static constexpr uintptr_t TYPE_MASK = 0x6;        ///< 中间两位 - 类型信息 (0b0110)
         static constexpr uintptr_t COPIED_MASK = 0x1;      ///< 最低位 - 复制标志 (0b0001)
         static constexpr uintptr_t HEAP_ALLOCATED_MASK = 0x8; ///< 第 4 位 - 堆分配标志 (0b1000)
         static constexpr uintptr_t CLEAR_MASK = ~0xF;      ///< 清除低 4 位的掩码
-
-        // 确保 dict 结构体至少 16 字节对齐
-
 
         /**
          * @brief 构造函数，使用初始化列表构造根字典
@@ -961,7 +874,7 @@ namespace slow_json::details {
             set_copied(true);
         }
 
-    protected:
+    //protected:
         /**
          * @brief 内部构造函数，用于构造子节点
          * @param data 序列化包装器指针
@@ -981,10 +894,7 @@ namespace slow_json::details {
          */
         void initialize_key_to_index() const SLOW_JSON_NOEXCEPT {
             if (!get_key_to_index() && get_type() == serializable_wrapper::ROOT_DICT_TYPE) {
-                set_key_to_index(new key_to_index{});
-                for (std::size_t index = 0; auto& it : _data) {
-                    get_key_to_index()->insert(_pair_key_fn(it), index++);
-                }
+                set_key_to_index(new key_to_index(_data));
             }
         }
 
