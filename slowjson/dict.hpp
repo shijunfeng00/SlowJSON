@@ -874,7 +874,7 @@ namespace slow_json::details {
             set_copied(true);
         }
 
-    //protected:
+    protected:
         /**
          * @brief 内部构造函数，用于构造子节点
          * @param data 序列化包装器指针
