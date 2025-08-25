@@ -745,8 +745,7 @@ namespace slow_json::details {
             if (get_type() != serializable_wrapper::FUNDAMENTAL_TYPE) {
                 return false;
             }
-            constexpr auto type_name = std::string_view{type_name_v<T>.str};
-            return type_name == _data_ptr->type_name();
+            return _data_ptr->type_name().data()==type_name_v<T>.str;
         }
 
         /**
