@@ -7,6 +7,7 @@
 
 #include "load_from_dict.hpp"
 #include "dynamic_dict.hpp"
+#include "dict_handler.hpp"
 
 namespace slow_json {
     /**
@@ -17,8 +18,31 @@ namespace slow_json {
      */
     template<typename T>
     static void loads(T &value, const std::string &json) {
-        slow_json::dynamic_dict dict(json);
-        LoadFromDict<T>::load(value, dict);
+        if constexpr(std::is_same_v<T,slow_json::dict>){
+            value=details::DictHandler::parse_json_to_dict(json);
+        }else{
+            slow_json::dynamic_dict dict(json);
+            LoadFromDict<T>::load(value, dict);
+        }
+    }
+
+    template<typename T>
+    static T loads(const std::string&json){
+        if constexpr(std::is_same_v<T,slow_json::dict>){
+            return details::DictHandler::parse_json_to_dict(json);
+        }else{
+            if constexpr(std::is_default_constructible_v<T>){
+                T value;
+                slow_json::dynamic_dict dict(json);
+                LoadFromDict<T>::load(value, dict);
+                return value;
+            }else{
+                assert_with_message(
+                        std::is_default_constructible_v<T>,
+                        "类型%s没有无参构造函数",
+                        slow_json::type_name_v<T>.with_end().str);
+            }
+        }
     }
 }
 #endif //SLOWJSON_LOAD_HPP
