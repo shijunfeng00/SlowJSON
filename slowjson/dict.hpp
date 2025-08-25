@@ -453,6 +453,7 @@ namespace slow_json::details {
         friend struct pair;
         friend struct LoadFromDict<dict>;
         friend struct DumpToString<dict>;
+        friend struct DictHandler;
         friend dict merge(dict&&, dict&&);
 
         // 与 pair 内存布局一致，解决 pair 和 dict 交叉依赖问题
@@ -886,6 +887,22 @@ namespace slow_json::details {
             set_copied(false);
             set_heap_allocated(false);
             _data_ptr = data;
+        }
+
+        explicit dict(std::vector<serializable_wrapper>&&data):
+        _key_to_index{nullptr} {
+            set_type(serializable_wrapper::LIST_TYPE);
+            set_copied(false);
+            set_heap_allocated(true);
+            _data_ptr=new serializable_wrapper{std::move(data)};
+        }
+
+        explicit dict(serializable_wrapper&& data) :
+                _key_to_index(nullptr) {
+            set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+            set_copied(false);
+            set_heap_allocated(true);
+            _data_ptr = new serializable_wrapper{std::move(data)};
         }
 
         /**
