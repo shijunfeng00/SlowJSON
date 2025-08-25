@@ -27,7 +27,7 @@ namespace slow_json{
         // 如果没有显式提供任何类型参数，则使用默认类型列表
         if constexpr (sizeof...(Args) == 0) {
             // 递归调用自身，传入默认类型 int, double, const char*
-            return visit<int64_t, double, std::string>(
+            return visit<int64_t,uint64_t,double,std::string>(
                     std::forward<Dict>(dict),
                     std::forward<Fn>(fn)
             );
