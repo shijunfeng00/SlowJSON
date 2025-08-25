@@ -72,8 +72,8 @@
 #include <unordered_map>
 #include "load_from_dict_interface.hpp"
 #include "key_to_index.hpp"
+
 namespace slow_json::details {
-    struct pair;
     struct dict;
     struct serializable_wrapper;
 
@@ -438,6 +438,8 @@ namespace slow_json::details {
             };
         }
     };
+
+
 
     /**
       * @brief 动态字典结构，用于存储键值对或包装值
@@ -872,6 +874,34 @@ namespace slow_json::details {
                 reinterpret_cast<_pair*>(&it)->_key = key_cp;
             }
             set_copied(true);
+        }
+
+        /**
+         * @brief 提取当前 dict 对象的值并转移所有权
+         * @return dict 包含提取值的字典
+         * @throws std::runtime_error 当类型不正确或无法提取时抛出异常
+         * @details 从当前 dict 中提取值（serializable_wrapper 或 pair::_value），转移所有权到返回的 dict，
+         *          原值置为 null（serializable_wrapper{nullptr}）。支持 ROOT_DICT_TYPE、DICT_TYPE、LIST_TYPE 和 FUNDAMENTAL_TYPE。
+         *          对于 ROOT_DICT_TYPE，需通过调用上下文（如 operator[]）提供键。
+         */
+        dict extract() {
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
+                throw std::runtime_error("根字典类型无法直接提取，需通过 operator[] 指定键");
+            }
+
+            if (type == serializable_wrapper::DICT_TYPE || type == serializable_wrapper::FUNDAMENTAL_TYPE || type == serializable_wrapper::LIST_TYPE) {
+                assert_with_message(_data_ptr != nullptr, "数据指针为空，无法提取");
+                // 创建新 dict，转移 _data_ptr 的 serializable_wrapper
+                dict result{std::move(*_data_ptr)};
+                // 原 _data_ptr 置为 null
+                *_data_ptr = serializable_wrapper{nullptr};
+                // 确保新 dict 的 _data_ptr 是堆分配的
+                result.set_heap_allocated(true);
+                return result;
+            }
+
+            throw std::runtime_error("未知类型，无法提取");
         }
 
     protected:

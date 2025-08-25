@@ -157,8 +157,13 @@ void test_integer_dumps();
 void test_dynamic_dict_visit();
 
 /**
- * 测试lows_json::dict反序列化的正确性
+ * 测试slow_json::dict反序列化的正确性
  */
 void test_dict_loads();
+
+/**
+ * 测试slow_json::dict::extrect生命周期
+ */
+void test_dict_extract();
 
 #endif //SLOWJSON_RUN_TEST_HPP

@@ -50,8 +50,6 @@ void test_dict_loads(){
 
     slow_json::dumps(buffer,dict,4);
 
-    std::cout<<"wocao:"<<buffer<<std::endl;
-
     assert_with_message(buffer.string()==R"({
     "sjf":null,
     "xxx":19260817,

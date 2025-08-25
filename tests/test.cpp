@@ -44,6 +44,7 @@ int main() {
     test_integer_dumps();
     test_dynamic_dict_visit();
     test_dict_loads();
+    test_dict_extract();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }
