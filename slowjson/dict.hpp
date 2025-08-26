@@ -164,62 +164,24 @@ namespace slow_json::details {
         friend struct LoadFromDict<details::serializable_wrapper>;
 
         /**
-         * @brief 构造函数，绑定类成员指针
-         * @tparam T 值类型，必须为成员指针
-         * @param value 要包装的成员指针
-         * @details 将成员指针包装为field_wrapper
-         */
-        template<typename T>
-        requires(std::is_member_pointer_v<T>)
-        constexpr serializable_wrapper(const T &value):serializable_wrapper{field_wrapper{value}} { // NOLINT(google-explicit-constructor)
-        }
-
-        /**
-         * @brief 构造函数，绑定任意可序列化值（复制构造）
-         * @tparam T 值类型，需满足可序列化要求且非成员指针
-         * @param value 要包装的值
-         * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
-         */
-        template<typename T>
-        requires(!std::is_member_pointer_v<T>)
-        constexpr serializable_wrapper(const T &value) { // NOLINT(google-explicit-constructor)
-            using U = std::decay_t<decltype(value)>;
-            constexpr std::size_t align_size = alignof(U);
-            // 设置原始类型名称并添加类型信息
-            _type_name = slow_json::type_name_v<U>.str;
-            set_type<U>();
-            // 根据大小决定存储方式
-            if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
-                new(&_buffer) U(value);
-                set_heap_allocated(false);
-            } else {
-                _buffer_ptr = new U(value);
-                set_heap_allocated(true);
-            }
-            initialize_functions<U>();
-        }
-
-        /**
          * @brief 构造函数，绑定任意可序列化值（移动构造）
          * @tparam T 值类型，需满足可序列化要求且非成员指针
          * @param value 要包装的值
          * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
          */
         template<typename T>
-        requires(!std::is_member_pointer_v<T> && std::is_rvalue_reference_v<T &&>)
-        constexpr serializable_wrapper(T &&value) SLOW_JSON_NOEXCEPT { // NOLINT(google-explicit-constructor)
-            using U = std::decay_t<T>;
-            constexpr std::size_t align_size = alignof(U);
-
-            // 设置原始类型名称并添加类型信息
+        requires(!std::is_same_v<std::decay_t<T>,serializable_wrapper>)
+        constexpr serializable_wrapper(T&& value) SLOW_JSON_NOEXCEPT { // NOLINT
+            using Raw = std::decay_t<T>;
+            using U   = std::conditional_t<std::is_member_pointer_v<Raw>, field_wrapper, Raw>;
+            using V   = std::conditional_t<std::is_member_pointer_v<Raw>,field_wrapper,T>;
             _type_name = slow_json::type_name_v<U>.str;
             set_type<U>();
-
-            if constexpr (sizeof(U) <= buffer_size && align_size <= alignof(std::max_align_t)) {
-                new(&_buffer) U(std::forward<T>(value));
+            if constexpr (sizeof(U) <= buffer_size && alignof(U) <= alignof(std::max_align_t)) {
+                new(&_buffer) U(std::forward<V>(value));
                 set_heap_allocated(false);
             } else {
-                _buffer_ptr = new U(std::forward<T>(value));
+                _buffer_ptr = new U(std::forward<V>(value));
                 set_heap_allocated(true);
             }
             initialize_functions<U>();
@@ -438,8 +400,6 @@ namespace slow_json::details {
             };
         }
     };
-
-
 
     /**
       * @brief 动态字典结构，用于存储键值对或包装值
@@ -710,6 +670,28 @@ namespace slow_json::details {
         template<typename T, typename = std::enable_if_t<(std::is_same_v<T, std::nullptr_t> || std::is_pointer_v<T>) && !std::is_integral_v<T>>>
         dict operator[](T key) SLOW_JSON_NOEXCEPT {
             auto value_fn = [](pair& p) { return &reinterpret_cast<_pair*>(&p)->_value; };
+            assert_with_message(key != nullptr, "key 为空指针");
+            auto type = get_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
+                initialize_key_to_index();
+                assert_with_message(get_key_to_index()->contains(key), "字典中不存在该字段:'%s'", (char*)key);
+                return dict{value_fn(_data[get_key_to_index()->at(key)])};
+            } else if (type == serializable_wrapper::DICT_TYPE) {
+                return static_cast<dict*>(_data_ptr->value())->operator[](key);
+            }
+            assert_with_message(false, "非字典类型，无法通过键访问数据");
+            return dict{nullptr};
+        }
+
+        /**
+         * @brief 访问字典元素
+         * @param key 键
+         * @return dict 对应的子字典或包装值
+         * @throws 当键不存在或类型不正确时抛出异常
+         */
+        template<typename T, typename = std::enable_if_t<(std::is_same_v<T, std::nullptr_t> || std::is_pointer_v<T>) && !std::is_integral_v<T>>>
+        dict operator[](T key)const SLOW_JSON_NOEXCEPT {
+            auto value_fn = [](const pair& p) { return &reinterpret_cast<const _pair*>(&p)->_value; };
             assert_with_message(key != nullptr, "key 为空指针");
             auto type = get_type();
             if (type == serializable_wrapper::ROOT_DICT_TYPE) {
