@@ -226,7 +226,7 @@ namespace slow_json::details {
                 std::strcpy(key_copy, key.c_str());
                 current->_data.emplace_back(key_copy, std::move(value));
                 current->set_copied(true);
-            } else if (root_ && root_->get_type() == serializable_wrapper::LIST_TYPE) {
+            } else if (root_ && root_->value_type() == serializable_wrapper::LIST_TYPE) {
                 // 根为数组，更新_data_ptr
                 *root_->_data_ptr = std::move(value);
             } else if (!root_) {
