@@ -15,7 +15,7 @@ namespace slow_json::details {
      * @details 使用 std::unordered_map 存储预计算哈希值到索引的映射，适合键数量少、查询频繁的场景。
      *          预分配容量以避免动态扩容，高质量哈希函数减少冲突，缓存友好。
      */
-    class alignas(64) key_to_index {
+    class alignas(16) key_to_index {
     public:
         /**
          * @brief 构造函数，从键值对向量直接初始化
@@ -125,9 +125,7 @@ namespace slow_json::details {
          * @return std::size_t 哈希值
          * @details 使用 MurmurHash3 或 FNV-1a 确保低冲突率
          */
-        static std::size_t hash_string(const char *key)
-
-        SLOW_JSON_NOEXCEPT {
+        static std::size_t hash_string(const char *key)SLOW_JSON_NOEXCEPT {
             // 简单 FNV-1a 哈希实现，实际可替换为 MurmurHash3
             std::size_t hash = 14695981039346656037ULL;
             for (; *key; ++key) {
