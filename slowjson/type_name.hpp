@@ -28,7 +28,7 @@ namespace slow_json {
 
         // 将类型名称转换为StaticString对象
         constexpr auto static_name = [&]<std::size_t...index>(std::index_sequence<index...> &&) {
-            return StaticString<name[index]..., '\0'>();
+            return StaticString64<name[index]..., '\0'>();
         }(std::make_index_sequence<name.size()>());
 
         // 返回StaticString对象

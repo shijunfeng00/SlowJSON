@@ -176,6 +176,7 @@ namespace slow_json::details {
             using U   = std::conditional_t<std::is_member_pointer_v<Raw>, field_wrapper, Raw>;
             using V   = std::conditional_t<std::is_member_pointer_v<Raw>,field_wrapper,T>;
             _type_name = slow_json::type_name_v<U>.str;
+            assert_with_message((uintptr_t)_type_name % 64 == 0, "指针地址非 64 对齐");
             set_type<U>();
             if constexpr (sizeof(U) <= buffer_size && alignof(U) <= alignof(std::max_align_t)) {
                 new(&_buffer) U(std::forward<V>(value));
@@ -1009,7 +1010,6 @@ namespace slow_json::details {
         [[nodiscard]] key_to_index* get_key_to_index() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
             ptr &= CLEAR_MASK; // 清除低 4 位
-            assert_with_message(ptr % 16 == 0 || ptr == 0, "指针地址非 16 对齐");
             return reinterpret_cast<key_to_index*>(ptr);
         }
 
@@ -1019,9 +1019,10 @@ namespace slow_json::details {
          * @details 保留低 4 位的元数据，将新指针嵌入
          */
         void set_key_to_index(key_to_index* ptr) const SLOW_JSON_NOEXCEPT {
+            assert_with_message((uintptr_t)ptr % 16 == 0 || ptr == nullptr, "新指针地址非 16 对齐");
             auto old_metadata = reinterpret_cast<uintptr_t>(_key_to_index) & ~CLEAR_MASK;
             auto new_ptr = reinterpret_cast<uintptr_t>(ptr);
-            assert_with_message(new_ptr % 16 == 0 || new_ptr == 0, "新指针地址非 16 对齐");
+
             _key_to_index = reinterpret_cast<key_to_index*>(new_ptr | old_metadata);
         }
 
