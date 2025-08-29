@@ -1,3 +1,4 @@
+
 /**
  * @file dict.hpp
  * @brief 实现动态字典结构及相关序列化功能
@@ -19,11 +20,11 @@
  *   - serializable_wrapper:
  *     * 小对象(≤32B)使用内部缓冲区(SOO)
  *     * 大对象使用堆分配
- *     * 类型名称指针低3位存储元数据(类型+堆分配标志)
+ *     * 类型名称指针低6位存储元数据(值类型2位+堆分配标志1位+基础类型3位)
  *
  *   - dict:
  *     * _key_to_index指针低4位存储（key_to_index强制要求16对齐）:
- *       - 类型信息(2位)
+ *       - 值类型信息(2位)
  *       - 键复制标志(1位)
  *       - 堆分配标志(1位)
  *     * 将这些元数据嵌入到指针地址中，大幅减少结构体大小，提高缓存局部性
@@ -40,7 +41,7 @@
  *    dict d = {
  *        {"name", "John"},
  *        {"age", 30},
- *        {"classes",{"Chinese","English","Mash"}},
+ *        {"classes",{"Chinese","English","Math"}},
  *        {"scores", std::vector{90, 85, 95}},
  *        {"details",{
  *            {"location","Sichuan"},
@@ -76,6 +77,19 @@
 namespace slow_json::details {
     struct dict;
     struct serializable_wrapper;
+
+    /**
+     * @brief 基础类型枚举，用于反序列化时记录具体类型
+     */
+    enum BaseType {
+        NOT_FUNDAMENTAL_TYPE = 0, // 非基本类型
+        NULL_TYPE = 1,            // null
+        INT64_TYPE = 2,           // int64_t
+        UINT64_TYPE = 3,          // uint64_t
+        DOUBLE_TYPE = 4,          // double
+        BOOL_TYPE = 5,            // bool
+        STRING_TYPE = 6           // std::string
+    };
 
     /**
      * @brief 字段包装器，用于处理类成员指针的序列化/反序列化
@@ -162,12 +176,13 @@ namespace slow_json::details {
     public:
         friend struct DumpToString<details::serializable_wrapper>;
         friend struct LoadFromDict<details::serializable_wrapper>;
-
+        friend struct DictHandler;
+        friend struct dict;
         /**
          * @brief 构造函数，绑定任意可序列化值（移动构造）
          * @tparam T 值类型，需满足可序列化要求且非成员指针
          * @param value 要包装的值
-         * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上
+         * @details 小对象（<=32字节）存储在内部缓冲区，大对象分配在堆上，BaseType 初始化为 NOT_FUNDAMENTAL_TYPE
          */
         template<typename T>
         requires(!std::is_same_v<std::decay_t<T>,serializable_wrapper>)
@@ -177,7 +192,8 @@ namespace slow_json::details {
             using V   = std::conditional_t<std::is_member_pointer_v<Raw>,field_wrapper,T>;
             _type_name = slow_json::type_name_v<U>.str;
             assert_with_message((uintptr_t)_type_name % 64 == 0, "指针地址非 64 对齐");
-            set_type<U>();
+            set_value_type<U>();
+            set_base_type(NOT_FUNDAMENTAL_TYPE);
             if constexpr (sizeof(U) <= buffer_size && alignof(U) <= alignof(std::max_align_t)) {
                 new(&_buffer) U(std::forward<V>(value));
                 set_heap_allocated(false);
@@ -298,48 +314,58 @@ namespace slow_json::details {
          */
         [[nodiscard]] std::string_view type_name() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
-            ptr &= CLEAR_MASK;  // 清除低3位
+            ptr &= CLEAR_MASK;  // 清除低6位
             assert_with_message(ptr % 8 == 0, "指针地址非8对齐");
             return std::string_view{reinterpret_cast<const char *>(ptr)};
         }
 
         /**
-         * @brief 获取存储的类型信息
-         * @return ValueType 类型枚举值
+         * @brief 获取存储的值类型信息
+         * @return ValueType 值类型枚举值
          * @details 返回基本类型、列表、字典或根字典的类型
          */
         [[nodiscard]] ValueType value_type() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
-            return static_cast<ValueType>((ptr & TYPE_MASK) >> 1);
+            return static_cast<ValueType>((ptr & VALUE_TYPE_MASK) >> 1);
+        }
+
+        /**
+         * @brief 获取基础类型信息
+         * @return BaseType 基础类型枚举值
+         * @details 从 _type_name 指针的低6位（第4-6位）提取基础类型信息
+         */
+        [[nodiscard]] BaseType get_base_type() const SLOW_JSON_NOEXCEPT {
+            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+            return static_cast<BaseType>((ptr & BASE_TYPE_MASK) >> 3);
         }
 
     private:
         static constexpr std::size_t buffer_size = 32; ///< 小对象缓冲区大小
-
         static constexpr uintptr_t HEAP_MASK = 0x1;    // 最低位 - 堆分配标志
-        static constexpr uintptr_t TYPE_MASK = 0x6;    // 中间两位 - 类型信息 (0b0110)
-        static constexpr uintptr_t CLEAR_MASK = ~0x7;  // 清除低3位的掩码
+        static constexpr uintptr_t VALUE_TYPE_MASK = 0x6; // 第2-3位 - 值类型信息 (0b0110)
+        static constexpr uintptr_t BASE_TYPE_MASK = 0x38; // 第4-6位 - 基础类型信息 (0b111000)
+        static constexpr uintptr_t CLEAR_MASK = ~0x3F; // 清除低6位的掩码
 
         union {
             mutable void *_buffer_ptr; ///< 大对象指针，指向堆内存
             alignas(16) char _buffer[buffer_size]; ///< 小对象缓冲区
         };
-        mutable const char *_type_name; ///< 类型名称，内存地址8对齐，末尾3位存储类型和堆分配信息
+        mutable const char *_type_name; ///< 类型名称，内存地址64对齐，末尾6位存储值类型、堆分配信息和基础类型
         void (*_dump_fn)(slow_json::Buffer &, void *) = nullptr; ///< 序列化函数指针
         void (*_move_or_delete_fn)(void*, void*, bool, bool) = nullptr;
 
         /**
-         * @brief 设置类型信息
+         * @brief 设置值类型信息
          * @tparam U 实际存储的类型
-         * @details 根据类型设置类型标志位
+         * @details 根据类型设置值类型标志位
          */
         template<typename U>
-        void set_type() SLOW_JSON_NOEXCEPT {
+        void set_value_type() SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
-            // 清除原有类型信息
-            ptr &= ~TYPE_MASK;
+            // 清除原有值类型信息
+            ptr &= ~VALUE_TYPE_MASK;
 
-            // 设置新类型信息
+            // 设置新值类型信息
             if constexpr (std::is_same_v<U, std::vector<serializable_wrapper>>) {
                 ptr |= (LIST_TYPE << 1);
             } else if constexpr (std::is_same_v<U, dict>) {
@@ -348,6 +374,18 @@ namespace slow_json::details {
                 ptr |= (FUNDAMENTAL_TYPE << 1);
             }
 
+            _type_name = reinterpret_cast<const char*>(ptr);
+        }
+
+        /**
+         * @brief 设置基础类型信息
+         * @param base_type 基础类型枚举值
+         * @details 将基础类型信息（3位）嵌入到 _type_name 指针的低6位（第4-6位）
+         */
+        void set_base_type(BaseType base_type) SLOW_JSON_NOEXCEPT {
+            auto ptr = reinterpret_cast<uintptr_t>(_type_name);
+            ptr &= ~BASE_TYPE_MASK; // 清除原有基础类型信息
+            ptr |= (static_cast<uintptr_t>(base_type) << 3); // 设置新基础类型信息
             _type_name = reinterpret_cast<const char*>(ptr);
         }
 
@@ -425,7 +463,7 @@ namespace slow_json::details {
             serializable_wrapper _value; ///< 值，序列化包装器形式
         };
 
-        static constexpr uintptr_t TYPE_MASK = 0x6;        ///< 中间两位 - 类型信息 (0b0110)
+        static constexpr uintptr_t VALUE_TYPE_MASK = 0x6;        ///< 中间两位 - 值类型信息 (0b0110)
         static constexpr uintptr_t COPIED_MASK = 0x1;      ///< 最低位 - 复制标志 (0b0001)
         static constexpr uintptr_t HEAP_ALLOCATED_MASK = 0x8; ///< 第 4 位 - 堆分配标志 (0b1000)
         static constexpr uintptr_t CLEAR_MASK = ~0xF;      ///< 清除低 4 位的掩码
@@ -437,7 +475,7 @@ namespace slow_json::details {
          */
         dict(std::initializer_list<pair>&& data) :
                 _key_to_index(nullptr) {
-            set_type(serializable_wrapper::ROOT_DICT_TYPE);
+            set_value_type(serializable_wrapper::ROOT_DICT_TYPE);
             set_copied(false);
             set_heap_allocated(false);
             new (&_data) std::vector<pair>(data);
@@ -455,7 +493,7 @@ namespace slow_json::details {
                   (concepts::string<K> && ...))
         constexpr dict(std::pair<K, V>&&... data)   // NOLINT(google-explicit-constructor)
                 : _key_to_index(nullptr) {
-            set_type(serializable_wrapper::ROOT_DICT_TYPE);
+            set_value_type(serializable_wrapper::ROOT_DICT_TYPE);
             set_copied(false);
             set_heap_allocated(false);
             new (&_data) std::vector<pair>{{pair{std::move(data.first), std::move(data.second)}...}};
@@ -475,7 +513,7 @@ namespace slow_json::details {
         dict(dict&& other) noexcept :
                 _key_to_index(nullptr) {
             auto other_type = other.value_type();
-            set_type(other_type);
+            set_value_type(other_type);
             set_copied(other.get_copied());
             set_heap_allocated(other.is_heap_allocated());
             if (other_type == serializable_wrapper::ROOT_DICT_TYPE) {
@@ -530,12 +568,12 @@ namespace slow_json::details {
                 // 分配新的堆内存
                 _data_ptr = new serializable_wrapper{std::move(value)};
                 set_heap_allocated(true);
-                set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+                set_value_type(serializable_wrapper::FUNDAMENTAL_TYPE);
                 set_copied(false);
             } else {
                 // 非根字典，直接修改 *_data_ptr
                 *_data_ptr = std::move(value);
-                set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+                set_value_type(serializable_wrapper::FUNDAMENTAL_TYPE);
                 set_copied(false);
             }
             return *this;
@@ -557,12 +595,12 @@ namespace slow_json::details {
                 // 分配新的堆内存
                 _data_ptr = new serializable_wrapper{std::move(value)};
                 set_heap_allocated(true);
-                set_type(serializable_wrapper::LIST_TYPE);
+                set_value_type(serializable_wrapper::LIST_TYPE);
                 set_copied(false);
             } else {
                 // 非根字典，直接修改 *_data_ptr
                 *_data_ptr = serializable_wrapper(std::move(value));
-                set_type(serializable_wrapper::LIST_TYPE);
+                set_value_type(serializable_wrapper::LIST_TYPE);
                 set_copied(false);
             }
             return *this;
@@ -596,7 +634,7 @@ namespace slow_json::details {
                         } else {
                             set_copied(false); // 接管所有权，避免 double free
                         }
-                        set_type(serializable_wrapper::ROOT_DICT_TYPE);
+                        set_value_type(serializable_wrapper::ROOT_DICT_TYPE);
                         set_heap_allocated(false);
                     } else {
                         // 对面非根字典，析构 _data 换 _data_ptr
@@ -604,14 +642,14 @@ namespace slow_json::details {
                         delete get_key_to_index();
                         set_key_to_index(nullptr);
                         set_copied(false);
-                        set_type(other.value_type());
+                        set_value_type(other.value_type());
                         _data_ptr = new serializable_wrapper(std::move(other));
                         set_heap_allocated(true);
                     }
                 } else {
                     // 自己非根字典
                     auto type = other.value_type();
-                    set_type(type == serializable_wrapper::ROOT_DICT_TYPE ? serializable_wrapper::DICT_TYPE : type);
+                    set_value_type(type == serializable_wrapper::ROOT_DICT_TYPE ? serializable_wrapper::DICT_TYPE : type);
                     set_key_to_index(other.get_key_to_index());
                     other.set_key_to_index(nullptr);
                     if (other.get_copied()) {
@@ -887,6 +925,20 @@ namespace slow_json::details {
             throw std::runtime_error("未知类型，无法提取");
         }
 
+
+
+        /**
+         * @brief 获取基础类型信息
+         * @return BaseType 基础类型枚举值
+         * @details 如果非 FUNDAMENTAL_TYPE，返回 NOT_FUNDAMENTAL_TYPE；否则委托给 _data_ptr
+         */
+        [[nodiscard]] BaseType get_base_type() const SLOW_JSON_NOEXCEPT {
+            if (value_type() != serializable_wrapper::FUNDAMENTAL_TYPE) {
+                return NOT_FUNDAMENTAL_TYPE;
+            }
+            return _data_ptr->get_base_type();
+        }
+
     protected:
         /**
          * @brief 内部构造函数，用于构造子节点
@@ -895,15 +947,15 @@ namespace slow_json::details {
          */
         explicit dict(serializable_wrapper* data) :
                 _key_to_index(nullptr) {
-            set_type(data ? data->value_type() : serializable_wrapper::FUNDAMENTAL_TYPE);
+            set_value_type(data ? data->value_type() : serializable_wrapper::FUNDAMENTAL_TYPE);
             set_copied(false);
             set_heap_allocated(false);
             _data_ptr = data;
         }
 
         explicit dict(std::vector<serializable_wrapper>&&data):
-        _key_to_index{nullptr} {
-            set_type(serializable_wrapper::LIST_TYPE);
+                _key_to_index{nullptr} {
+            set_value_type(serializable_wrapper::LIST_TYPE);
             set_copied(false);
             set_heap_allocated(true);
             _data_ptr=new serializable_wrapper{std::move(data)};
@@ -911,12 +963,21 @@ namespace slow_json::details {
 
         explicit dict(serializable_wrapper&& data) :
                 _key_to_index(nullptr) {
-            set_type(serializable_wrapper::FUNDAMENTAL_TYPE);
+            set_value_type(serializable_wrapper::FUNDAMENTAL_TYPE);
             set_copied(false);
             set_heap_allocated(true);
             _data_ptr = new serializable_wrapper{std::move(data)};
         }
-
+        /**
+         * @brief 设置基础类型信息
+         * @param base_type 基础类型枚举值
+         * @details 仅当类型为 FUNDAMENTAL_TYPE 时设置 _data_ptr 的 BaseType，否则忽略
+         */
+        void set_base_type(BaseType base_type) SLOW_JSON_NOEXCEPT {
+            if (value_type() == serializable_wrapper::FUNDAMENTAL_TYPE) {
+                _data_ptr->set_base_type(base_type);
+            }
+        }
         /**
          * @brief 初始化键到索引映射
          * @details 延迟初始化 _key_to_index 以提高性能
@@ -937,24 +998,24 @@ namespace slow_json::details {
         }
 
         /**
-         * @brief 获取存储的类型信息
-         * @return serializable_wrapper::ValueType 类型枚举值
+         * @brief 获取存储的值类型信息
+         * @return serializable_wrapper::ValueType 值类型枚举值
          * @details 从 _key_to_index 指针的低 4 位中提取类型信息（第 2-3 位）
          */
         [[nodiscard]] serializable_wrapper::ValueType value_type() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
-            return static_cast<serializable_wrapper::ValueType>((ptr & TYPE_MASK) >> 1);
+            return static_cast<serializable_wrapper::ValueType>((ptr & VALUE_TYPE_MASK) >> 1);
         }
 
         /**
-         * @brief 设置类型信息
-         * @param type 类型枚举值
-         * @details 将类型信息（2 位）嵌入到 _key_to_index 指针的低 4 位（第 2-3 位）
+         * @brief 设置值类型信息
+         * @param type 值类型枚举值
+         * @details 将值类型信息（2 位）嵌入到 _key_to_index 指针的低 4 位（第 2-3 位）
          */
-        void set_type(serializable_wrapper::ValueType type) SLOW_JSON_NOEXCEPT {
+        void set_value_type(serializable_wrapper::ValueType type) SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_key_to_index);
-            ptr &= ~TYPE_MASK; // 清除原有类型信息
-            ptr |= (static_cast<uintptr_t>(type) << 1); // 设置新类型信息
+            ptr &= ~VALUE_TYPE_MASK; // 清除原有值类型信息
+            ptr |= (static_cast<uintptr_t>(type) << 1); // 设置新值类型信息
             _key_to_index = reinterpret_cast<key_to_index*>(ptr);
         }
 
@@ -1022,11 +1083,10 @@ namespace slow_json::details {
             assert_with_message((uintptr_t)ptr % 16 == 0 || ptr == nullptr, "新指针地址非 16 对齐");
             auto old_metadata = reinterpret_cast<uintptr_t>(_key_to_index) & ~CLEAR_MASK;
             auto new_ptr = reinterpret_cast<uintptr_t>(ptr);
-
             _key_to_index = reinterpret_cast<key_to_index*>(new_ptr | old_metadata);
         }
 
-        mutable key_to_index* _key_to_index; ///< 键到索引映射，延迟初始化，低 4 位存储类型、复制标志和堆分配标志
+        mutable key_to_index* _key_to_index; ///< 键到索引映射，延迟初始化，低 4 位存储值类型、复制标志和堆分配标志
         union {
             std::vector<pair> _data; ///< 根字典的键值对
             serializable_wrapper* _data_ptr; ///< 其他类型的包装值
@@ -1088,4 +1148,5 @@ namespace slow_json {
     using details::dict;
     using list = std::vector<details::serializable_wrapper>;
 }
-#endif // SLOWJSON_DICT_HPP
+
+#endif //SLOWJSON_DICT_HPP

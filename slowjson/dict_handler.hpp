@@ -1,6 +1,5 @@
-//
-// Created by hyzh on 2025/8/25.
-//
+
+// Created by hyzh on 2025/8/25
 
 #ifndef SLOWJSON_DICT_HANDLER_HPP
 #define SLOWJSON_DICT_HANDLER_HPP
@@ -43,7 +42,6 @@ namespace slow_json::details {
          * @param memberCount 对象中的键值对数量
          * @return bool 始终返回true，表示继续解析
          * @details 弹出当前对象栈顶，如果非根对象，从值键栈弹出键并包装为serializable_wrapper插入父级。
-         *          为根字典对象调用copy_key()以复制键。
          */
         bool EndObject(rapidjson::SizeType memberCount) {
             dict* current = object_stack_.top();
@@ -119,6 +117,7 @@ namespace slow_json::details {
          */
         bool String(const char* str, rapidjson::SizeType length, bool copy) {
             serializable_wrapper wrapper{std::string(str, length)};
+            wrapper.set_base_type(STRING_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -131,9 +130,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Int(int i) {
+            serializable_wrapper wrapper{static_cast<int64_t>(i)};
+            wrapper.set_base_type(INT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{static_cast<int64_t>(i)});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -143,9 +144,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Uint(unsigned u) {
+            serializable_wrapper wrapper{static_cast<uint64_t>(u)};
+            wrapper.set_base_type(UINT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{static_cast<uint64_t>(u)});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -155,9 +158,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Int64(int64_t i) {
+            serializable_wrapper wrapper{i};
+            wrapper.set_base_type(INT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{i});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -167,9 +172,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Uint64(uint64_t u) {
+            serializable_wrapper wrapper{u};
+            wrapper.set_base_type(UINT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{u});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -179,9 +186,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Double(double d) {
+            serializable_wrapper wrapper{d};
+            wrapper.set_base_type(DOUBLE_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{d});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -191,9 +200,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Bool(bool b) {
+            serializable_wrapper wrapper{b};
+            wrapper.set_base_type(BOOL_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{b});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
@@ -202,9 +213,11 @@ namespace slow_json::details {
          * @return bool 始终返回true
          */
         bool Null() {
+            serializable_wrapper wrapper{nullptr};
+            wrapper.set_base_type(NULL_TYPE);
             std::string key = current_key_;
             current_key_ = "";
-            InsertValue(std::move(key), serializable_wrapper{nullptr});
+            InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
 
