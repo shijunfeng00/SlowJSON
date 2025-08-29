@@ -2,7 +2,6 @@
 // Created by hy-20 on 2024/8/12.
 //
 #include "test.hpp"
-#include "slowjson.hpp"
 #include <iostream>
 
 int main() {
@@ -45,6 +44,7 @@ int main() {
     test_dynamic_dict_visit();
     test_dict_loads();
     test_dict_extract();
+    test_base_type();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }

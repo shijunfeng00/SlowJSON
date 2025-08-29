@@ -166,4 +166,9 @@ void test_dict_loads();
  */
 void test_dict_extract();
 
+/**
+ * 测量反序列化（DictHandler）是否正确记录了base_type信息
+ */
+void test_base_type();
+
 #endif //SLOWJSON_RUN_TEST_HPP
