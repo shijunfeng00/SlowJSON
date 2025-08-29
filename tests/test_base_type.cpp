@@ -23,25 +23,25 @@ void test_base_type() {
     slow_json::loads(dict, json_str);
 
     // 验证 BaseType
-    assert_with_message(dict["sjf"].get_base_type() == slow_json::details::NULL_TYPE,
+    assert_with_message(dict["sjf"].get_base_type() == slow_json::details::serializable_wrapper::NULL_TYPE,
                         "sjf 的 BaseType 预期为 NULL_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["sjf"].get_base_type()).data());
-    assert_with_message(dict["xxx"].get_base_type() == slow_json::details::UINT64_TYPE,
+    assert_with_message(dict["xxx"].get_base_type() == slow_json::details::serializable_wrapper::UINT64_TYPE,
                         "xxx 的 BaseType 预期为 UINT64_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["xxx"].get_base_type()).data());
-    assert_with_message(dict["yyy"].get_base_type() == slow_json::details::DOUBLE_TYPE,
+    assert_with_message(dict["yyy"].get_base_type() == slow_json::details::serializable_wrapper::DOUBLE_TYPE,
                         "yyy 的 BaseType 预期为 DOUBLE_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["yyy"].get_base_type()).data());
-    assert_with_message(dict["zzz"].get_base_type() == slow_json::details::STRING_TYPE,
+    assert_with_message(dict["zzz"].get_base_type() == slow_json::details::serializable_wrapper::STRING_TYPE,
                         "zzz 的 BaseType 预期为 STRING_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["zzz"].get_base_type()).data());
-    assert_with_message(dict["test"]["value"].get_base_type() == slow_json::details::INT64_TYPE,
+    assert_with_message(dict["test"]["value"].get_base_type() == slow_json::details::serializable_wrapper::INT64_TYPE,
                         "test.value 的 BaseType 预期为 INT64_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["test"]["value"].get_base_type()).data());
-    assert_with_message(dict["dq"].get_base_type() == slow_json::details::NOT_FUNDAMENTAL_TYPE,
+    assert_with_message(dict["dq"].get_base_type() == slow_json::details::serializable_wrapper::NOT_FUNDAMENTAL_TYPE,
                         "dq 的 BaseType 预期为 NOT_FUNDAMENTAL_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["dq"].get_base_type()).data());
-    assert_with_message(dict["dq"][2].get_base_type() == slow_json::details::BOOL_TYPE,
+    assert_with_message(dict["dq"][2].get_base_type() == slow_json::details::serializable_wrapper::BOOL_TYPE,
                         "dq[2] 的 BaseType 预期为 BOOL_TYPE，实际为 %s",
                         slow_json::details::enum2string(dict["dq"][2].get_base_type()).data());
 

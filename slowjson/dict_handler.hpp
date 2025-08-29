@@ -117,7 +117,7 @@ namespace slow_json::details {
          */
         bool String(const char* str, rapidjson::SizeType length, bool copy) {
             serializable_wrapper wrapper{std::string(str, length)};
-            wrapper.set_base_type(STRING_TYPE);
+            wrapper.set_base_type(serializable_wrapper::STRING_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -131,7 +131,7 @@ namespace slow_json::details {
          */
         bool Int(int i) {
             serializable_wrapper wrapper{static_cast<int64_t>(i)};
-            wrapper.set_base_type(INT64_TYPE);
+            wrapper.set_base_type(serializable_wrapper::INT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -145,7 +145,7 @@ namespace slow_json::details {
          */
         bool Uint(unsigned u) {
             serializable_wrapper wrapper{static_cast<uint64_t>(u)};
-            wrapper.set_base_type(UINT64_TYPE);
+            wrapper.set_base_type(serializable_wrapper::UINT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -159,7 +159,7 @@ namespace slow_json::details {
          */
         bool Int64(int64_t i) {
             serializable_wrapper wrapper{i};
-            wrapper.set_base_type(INT64_TYPE);
+            wrapper.set_base_type(serializable_wrapper::INT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -173,7 +173,7 @@ namespace slow_json::details {
          */
         bool Uint64(uint64_t u) {
             serializable_wrapper wrapper{u};
-            wrapper.set_base_type(UINT64_TYPE);
+            wrapper.set_base_type(serializable_wrapper::UINT64_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -187,7 +187,7 @@ namespace slow_json::details {
          */
         bool Double(double d) {
             serializable_wrapper wrapper{d};
-            wrapper.set_base_type(DOUBLE_TYPE);
+            wrapper.set_base_type(serializable_wrapper::DOUBLE_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -201,7 +201,7 @@ namespace slow_json::details {
          */
         bool Bool(bool b) {
             serializable_wrapper wrapper{b};
-            wrapper.set_base_type(BOOL_TYPE);
+            wrapper.set_base_type(serializable_wrapper::BOOL_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));
@@ -214,7 +214,7 @@ namespace slow_json::details {
          */
         bool Null() {
             serializable_wrapper wrapper{nullptr};
-            wrapper.set_base_type(NULL_TYPE);
+            wrapper.set_base_type(serializable_wrapper::NULL_TYPE);
             std::string key = current_key_;
             current_key_ = "";
             InsertValue(std::move(key), std::move(wrapper));

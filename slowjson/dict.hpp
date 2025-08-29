@@ -78,18 +78,6 @@ namespace slow_json::details {
     struct dict;
     struct serializable_wrapper;
 
-    /**
-     * @brief 基础类型枚举，用于反序列化时记录具体类型
-     */
-    enum BaseType {
-        NOT_FUNDAMENTAL_TYPE = 0, // 非基本类型
-        NULL_TYPE = 1,            // null
-        INT64_TYPE = 2,           // int64_t
-        UINT64_TYPE = 3,          // uint64_t
-        DOUBLE_TYPE = 4,          // double
-        BOOL_TYPE = 5,            // bool
-        STRING_TYPE = 6           // std::string
-    };
 
     /**
      * @brief 字段包装器，用于处理类成员指针的序列化/反序列化
@@ -158,6 +146,18 @@ namespace slow_json::details {
 
     struct serializable_wrapper {
         /**
+         * @brief 基础类型枚举，细化FUNDAMENTAL_TYPE，用于反序列化时记录具体类型
+         */
+        enum BaseType {
+            NOT_FUNDAMENTAL_TYPE = 0, // 非基本类型
+            NULL_TYPE = 1,
+            INT64_TYPE = 2,
+            UINT64_TYPE = 3,
+            DOUBLE_TYPE = 4,
+            BOOL_TYPE = 5,
+            STRING_TYPE = 6
+        };
+        /**
          * @brief 对dict元素访问提供支持
          * @details 从dict解析出原本的C++对象需要一定的类型信息的支持，需要知道serializable_wrapper内部存储的是原始C++对象，列表，字典还是根字典
          * @note 每一种类型的定义如下：
@@ -167,10 +167,10 @@ namespace slow_json::details {
          * - 根字典：slow_json::dict（键值对集合）
          */
         enum ValueType {
-            FUNDAMENTAL_TYPE = 0,  // 原始C++对象 00
-            LIST_TYPE = 1,         // 列表 01
-            DICT_TYPE = 2,         // 嵌套字典 10
-            ROOT_DICT_TYPE = 3     // 根字典 11
+            FUNDAMENTAL_TYPE = 0,
+            LIST_TYPE = 1,
+            DICT_TYPE = 2,
+            ROOT_DICT_TYPE = 3
         };
 
     public:
@@ -783,6 +783,9 @@ namespace slow_json::details {
             constexpr auto type_name = std::string_view{type_name_v<T>.str};
             assert_with_message(type_name == _data_ptr->type_name(), "类型不正确，预期为`%s`，实际为`%s`",
                                 _data_ptr->type_name().data(), type_name.data());
+            if(this->get_base_type()==serializable_wrapper::NOT_FUNDAMENTAL_TYPE){
+
+            }
             return *static_cast<T*>(_data_ptr->value());
         }
 
@@ -932,9 +935,9 @@ namespace slow_json::details {
          * @return BaseType 基础类型枚举值
          * @details 如果非 FUNDAMENTAL_TYPE，返回 NOT_FUNDAMENTAL_TYPE；否则委托给 _data_ptr
          */
-        [[nodiscard]] BaseType get_base_type() const SLOW_JSON_NOEXCEPT {
+        [[nodiscard]] serializable_wrapper::BaseType get_base_type() const SLOW_JSON_NOEXCEPT {
             if (value_type() != serializable_wrapper::FUNDAMENTAL_TYPE) {
-                return NOT_FUNDAMENTAL_TYPE;
+                return serializable_wrapper::NOT_FUNDAMENTAL_TYPE;
             }
             return _data_ptr->get_base_type();
         }
@@ -973,7 +976,7 @@ namespace slow_json::details {
          * @param base_type 基础类型枚举值
          * @details 仅当类型为 FUNDAMENTAL_TYPE 时设置 _data_ptr 的 BaseType，否则忽略
          */
-        void set_base_type(BaseType base_type) SLOW_JSON_NOEXCEPT {
+        void set_base_type(serializable_wrapper::BaseType base_type) SLOW_JSON_NOEXCEPT {
             if (value_type() == serializable_wrapper::FUNDAMENTAL_TYPE) {
                 _data_ptr->set_base_type(base_type);
             }
