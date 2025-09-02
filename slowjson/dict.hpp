@@ -894,6 +894,17 @@ namespace slow_json::details {
          * @see dict::cast
          */
         template<typename T>
+        requires(
+        !concepts::contains<
+                std::decay_t<T>,
+                serializable_wrapper,
+                dict,
+                pair,
+                std::vector<serializable_wrapper>,
+                std::vector<pair>
+        > &&
+        !std::is_same_v<std::decay_t<T>, dict>
+        )
         operator T()const SLOW_JSON_NOEXCEPT{  // NOLINT(google-explicit-constructor)
             return this->cast<T>();
         }
@@ -1052,7 +1063,7 @@ namespace slow_json::details {
             return _data_ptr->get_base_type();
         }
 
-    protected:
+    //protected:
         /**
          * @brief 内部构造函数，用于构造子节点
          * @param data 序列化包装器指针

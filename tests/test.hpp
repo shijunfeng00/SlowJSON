@@ -170,5 +170,9 @@ void test_dict_extract();
  * 测量反序列化（DictHandler）是否正确记录了base_type信息
  */
 void test_base_type();
-
+/**
+ * 1.测试operator T支持的int x=dict["xx"]是否正确。
+ * 2.测试dict嵌套dict的情况下可以正确构造函数（没有二义性）
+ */
+void test_variant_cast_operator_T();
 #endif //SLOWJSON_RUN_TEST_HPP

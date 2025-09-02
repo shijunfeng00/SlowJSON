@@ -45,6 +45,7 @@ int main() {
     test_dict_loads();
     test_dict_extract();
     test_base_type();
+    test_variant_cast_operator_T();
     printf("\n--------------------\n");
     printf("All done correctly!\n");
 }
