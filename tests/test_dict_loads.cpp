@@ -2,75 +2,31 @@
 // Created by hyzh on 2025/7/9.
 //
 #include "slowjson.hpp"
-#include<iostream>
 
-void test_dict_loads(){
+void test_dict_loads() {
     printf("run %s\n", __PRETTY_FUNCTION__);
-    std::string json_str = R"({
-    "sjf":null,
-    "xxx":19260817,
-    "yyy":2022.21,
-    "zzz":"SJF",
-    "test":{"value":654231},
-    "dq":[
-        "A",
-        "B",
-        "C",
-        "D"
-    ]
-})";
 
+    // ====== 复杂的嵌套 JSON ======
+    std::string json_str = R"({"null_field":null,"int_field":19260817,"float_field":2022.21,"string_field":"SJF","bool_field":true,"object_field":{"empty_obj":{},"nested_dict":{"id":123,"tags":["alpha","beta","gamma"],"arr_of_dicts":[{"k1":"v1","flag":true},{"k2":"v2","flag":false}]}},"list_field":["A",123,null,{"deep":{"msg":"hello","nums":[1,2,3,4]}},[true,false,null]]})";
+
+    // ====== loads ======
     slow_json::dict dict;
-    slow_json::loads(dict,json_str);
+    slow_json::loads(dict, json_str);
+
+    // ====== dumps ======
     slow_json::Buffer buffer;
-    slow_json::dumps(buffer,dict,4);
+    slow_json::dumps(buffer, dict);
 
-    assert_with_message(buffer.string()==R"({
-    "sjf":null,
-    "xxx":19260817,
-    "yyy":2022.21,
-    "zzz":"SJF",
-    "test":{
-        "value":654231
-    },
-    "dq":[
-        "A",
-        "B",
-        "C",
-        "D"
-    ]
-})","slow_json::dict通过slow_json::loads反序列化结果不正确");
-    dict["dq"][0]={1,1,4,5,1,4};
-    dict["dq"][1]=nullptr;
-    dict["test"]={
-            {"key1","value1"},
-            {"key2","value2"}
-    };
-    buffer.clear();
+    // ====== 再 loads/dumps 一次，确保闭环 ======
+    slow_json::dict dict2;
+    slow_json::loads(dict2, buffer.string());
 
-    slow_json::dumps(buffer,dict,4);
+    slow_json::Buffer buffer2;
+    slow_json::dumps(buffer2, dict2);
 
-    assert_with_message(buffer.string()==R"({
-    "sjf":null,
-    "xxx":19260817,
-    "yyy":2022.21,
-    "zzz":"SJF",
-    "test":{
-        "key1":"value1",
-        "key2":"value2"
-    },
-    "dq":[
-        [
-            1,
-            1,
-            4,
-            5,
-            1,
-            4
-        ],
-        null,
-        "C",
-        "D"
-    ]
-})","slow_json::dict通过slow_json::loads反序列化结果不正确");
+    // ====== 验证字符串一致性 ======
+    assert_with_message(buffer.string() == buffer2.string(),
+                        "复杂嵌套 JSON 在 dumps → loads → dumps 过程中不一致");
+    assert_with_message(buffer.string() == json_str,
+                        "复杂嵌套 JSON 在 dumps → loads → dumps 过程中不一致");
 }

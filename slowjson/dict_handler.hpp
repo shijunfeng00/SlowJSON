@@ -1,9 +1,9 @@
-
 // Created by hyzh on 2025/8/25
 
 #ifndef SLOWJSON_DICT_HANDLER_HPP
 #define SLOWJSON_DICT_HANDLER_HPP
 #include <stack>
+#include <cstring>
 #include "reader.h"
 #include "error/en.h"
 #include "dict.hpp"
@@ -31,6 +31,7 @@ namespace slow_json::details {
                 object_stack_.push(root_);
             } else {
                 value_key_stack_.push(current_key_);
+                current_key_.clear(); // ★ 避免子层级继续继承上层 key
                 auto object = new dict{};
                 object_stack_.push(object);
             }
@@ -46,11 +47,14 @@ namespace slow_json::details {
         bool EndObject(rapidjson::SizeType memberCount) {
             dict* current = object_stack_.top();
             object_stack_.pop();
-            if (!object_stack_.empty()) {
-                std::string key = value_key_stack_.top();
-                value_key_stack_.pop();
+            if (!object_stack_.empty() || !array_stack_.empty()) {
+                std::string key;
+                if (!value_key_stack_.empty()) {
+                    key = std::move(value_key_stack_.top());
+                    value_key_stack_.pop();
+                }
                 serializable_wrapper wrapper{std::move(*current)};
-                delete current;  // 清理临时dict
+                delete current;
                 InsertValue(std::move(key), std::move(wrapper));
             }
             return true;
@@ -67,6 +71,7 @@ namespace slow_json::details {
                 array_stack_.push((std::vector<serializable_wrapper>*)root_->_data_ptr->value());
             } else {
                 value_key_stack_.push(current_key_);
+                current_key_.clear(); // ★ 避免 key 泄漏
                 auto* arr = new std::vector<serializable_wrapper>{};
                 array_stack_.push(arr);
             }
@@ -82,13 +87,21 @@ namespace slow_json::details {
         bool EndArray(rapidjson::SizeType elementCount) {
             auto* arr = array_stack_.top();
             array_stack_.pop();
-            serializable_wrapper wrapper{std::move(*arr)};
-            if (!array_stack_.empty() || !object_stack_.empty()) {
-                std::string key = value_key_stack_.top();
-                value_key_stack_.pop();
-                InsertValue(std::move(key), std::move(wrapper));
-                delete arr;  // 仅清理非根数组
+
+            // 根数组：直接保留，不要移动走
+            if (object_stack_.empty() && array_stack_.empty()) {
+                return true;
             }
+
+            // 子数组：封装并插入父级
+            serializable_wrapper wrapper{std::move(*arr)};
+            std::string key;
+            if (!value_key_stack_.empty()) {
+                key = std::move(value_key_stack_.top());
+                value_key_stack_.pop();
+            }
+            InsertValue(std::move(key), std::move(wrapper));
+            delete arr;
             return true;
         }
 
@@ -118,8 +131,8 @@ namespace slow_json::details {
         bool String(const char* str, rapidjson::SizeType length, bool copy) {
             serializable_wrapper wrapper{std::string(str, length)};
             wrapper.set_base_type(serializable_wrapper::STRING_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -132,8 +145,8 @@ namespace slow_json::details {
         bool Int(int i) {
             serializable_wrapper wrapper{static_cast<int64_t>(i)};
             wrapper.set_base_type(serializable_wrapper::INT64_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -146,8 +159,8 @@ namespace slow_json::details {
         bool Uint(unsigned u) {
             serializable_wrapper wrapper{static_cast<uint64_t>(u)};
             wrapper.set_base_type(serializable_wrapper::UINT64_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -157,11 +170,16 @@ namespace slow_json::details {
          * @param i 64位整数值
          * @return bool 始终返回true
          */
+        /**
+         * @brief 处理64位有符号整数值
+         * @param i 64位整数值
+         * @return bool 始终返回true
+         */
         bool Int64(int64_t i) {
             serializable_wrapper wrapper{i};
             wrapper.set_base_type(serializable_wrapper::INT64_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -174,8 +192,8 @@ namespace slow_json::details {
         bool Uint64(uint64_t u) {
             serializable_wrapper wrapper{u};
             wrapper.set_base_type(serializable_wrapper::UINT64_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -188,8 +206,8 @@ namespace slow_json::details {
         bool Double(double d) {
             serializable_wrapper wrapper{d};
             wrapper.set_base_type(serializable_wrapper::DOUBLE_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -202,8 +220,8 @@ namespace slow_json::details {
         bool Bool(bool b) {
             serializable_wrapper wrapper{b};
             wrapper.set_base_type(serializable_wrapper::BOOL_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -215,8 +233,8 @@ namespace slow_json::details {
         bool Null() {
             serializable_wrapper wrapper{nullptr};
             wrapper.set_base_type(serializable_wrapper::NULL_TYPE);
-            std::string key = current_key_;
-            current_key_ = "";
+            std::string key = std::move(current_key_);
+            current_key_.clear();
             InsertValue(std::move(key), std::move(wrapper));
             return true;
         }
@@ -229,25 +247,29 @@ namespace slow_json::details {
          * @details 根据当前栈状态，将值插入到对象（使用键创建pair）或数组（忽略键），支持根对象为基本类型或数组。
          */
         void InsertValue(std::string key, serializable_wrapper&& value) {
-            if (!array_stack_.empty()) {
-                // 插入到当前数组（忽略键）
-                array_stack_.top()->emplace_back(std::move(value));
-            } else if (!object_stack_.empty()) {
-                // 插入到当前对象作为pair
+            // ① 对象优先
+            if (!object_stack_.empty() && !key.empty()) {
                 dict* current = object_stack_.top();
                 char* key_copy = new char[key.size() + 1];
-                std::strcpy(key_copy, key.c_str());
+                std::memcpy(key_copy, key.c_str(), key.size() + 1);
                 current->_data.emplace_back(key_copy, std::move(value));
                 current->set_copied(true);
-            } else if (root_ && root_->value_type() == serializable_wrapper::LIST_TYPE) {
-                // 根为数组，更新_data_ptr
-                *root_->_data_ptr = std::move(value);
-            } else if (!root_) {
-                // 根为基本类型
-                root_ = new dict{std::move(value)};
-            } else {
-                throw std::runtime_error("值出现在无效上下文中");
+                return;
             }
+
+            // ② 数组次之
+            if (!array_stack_.empty()) {
+                array_stack_.top()->emplace_back(std::move(value));
+                return;
+            }
+
+            // ③ 根基本类型
+            if (!root_) {
+                root_ = new dict{std::move(value)};
+                return;
+            }
+
+            throw std::runtime_error("值出现在无效上下文中");
         }
 
         /**
@@ -260,7 +282,7 @@ namespace slow_json::details {
                 throw std::runtime_error("未解析到任何根对象");
             }
             dict result = std::move(*root_);
-            delete root_; // 清理堆分配
+            delete root_;
             root_ = nullptr;
             return result;
         }
@@ -289,7 +311,6 @@ namespace slow_json::details {
                 throw std::runtime_error(error_msg);
             }
 
-            // 检查是否所有输入都被解析
             if (ss.Tell() != json_str.size()) {
                 throw std::runtime_error("JSON解析不完整，存在未解析的字符");
             }
@@ -304,5 +325,7 @@ namespace slow_json::details {
         std::stack<std::string> value_key_stack_; ///< 值键栈，管理嵌套对象的键以防覆盖
         std::string current_key_; ///< 当前解析的键
     };
-}
+
+} // namespace slow_json::details
+
 #endif //SLOWJSON_DICT_HANDLER_HPP
