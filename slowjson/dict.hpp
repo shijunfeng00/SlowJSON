@@ -874,7 +874,8 @@ namespace slow_json::details {
                                 return {};
                             }
                         default:
-                            throw std::runtime_error("不支持的类型，正常来说不应该出现这个错误，请联系开发人员处理该bug");
+                            assert_with_message(false,"不支持的类型，正常来说不应该出现这个错误，请联系开发人员处理该bug");
+                            return {};
                     }
                 } else {
                     assert_with_message(type_name.data() == _data_ptr->type_name().data(), "尝试将%s类型数据转换为%s",

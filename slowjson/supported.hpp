@@ -7,7 +7,9 @@
 
 #include "dump_to_string.hpp"
 #include "load_from_dict.hpp"
-
+namespace slow_json::details{
+    struct dict;
+};
 namespace slow_json::concepts {
 
     /**
@@ -15,14 +17,14 @@ namespace slow_json::concepts {
      * @tparam T
      */
     template<typename T>
-    concept load_supported=!requires(T a){ LoadFromDict<T>::not_supported_flag; };
+    concept load_supported= std::is_same_v<T,slow_json::details::dict> || !requires(T a){ LoadFromDict<T>::not_supported_flag; };
 
     /**
      * 是否支持序列化
      * @tparam T
      */
     template<typename T>
-    concept dump_supported=!requires(T a){ DumpToString<T>::not_supported_flag; };
+    concept dump_supported=std::is_same_v<T,slow_json::details::dict>  || !requires(T a){ DumpToString<T>::not_supported_flag; };
 
     /**
      * 是否同时支持序列化与反序列化

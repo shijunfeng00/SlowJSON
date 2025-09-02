@@ -57,12 +57,6 @@ void test_variant_cast_operator_T() {
     dict d2;
     slow_json::loads(d2, json_str);
 
-
-    slow_json::cout.set_indent(4);
-    slow_json::Buffer b;
-    slow_json::dumps(b,d2,4);
-
-
     // ====== 测试 cast/operator T ======
 
     // 基础类型
