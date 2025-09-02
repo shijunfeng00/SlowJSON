@@ -887,6 +887,18 @@ namespace slow_json::details {
         }
 
         /**
+         * 允许int x=dict["x"]则阳的赋值语句
+         * @tparam T 目标类型
+         * @return T 转换后的值（对于基本类型可能是隐式转换后的值）
+         * @throws std::runtime_error 当类型不匹配或无法转换时抛出异常
+         * @see dict::cast
+         */
+        template<typename T>
+        operator T()const SLOW_JSON_NOEXCEPT{  // NOLINT(google-explicit-constructor)
+            return this->cast<T>();
+        }
+
+        /**
          * @brief 检查是否为基本类型
          * @return bool 是否为基本类型
          */
