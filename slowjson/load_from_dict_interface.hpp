@@ -6,13 +6,15 @@
 #define SLOWJSON_LOAD_FROM_DICT_INTERFACE_HPP
 #define SLOW_JSON_SUPPORTED false
 
-#include "dynamic_dict.hpp"
+#include "dict.hpp"
+#include "assert_with_message.hpp"
+#include "type_name.hpp"
 
 namespace slow_json {
     template<typename Self>
     struct ILoadFromDict {
         template<typename T>
-        static void load(T &value, const slow_json::dynamic_dict &dict) {
+        static void load(T &value, const dict &dict) {
             return Self::load_impl(value, dict);
         }
     };
@@ -24,7 +26,7 @@ namespace slow_json {
     template<typename T>
     struct LoadFromDict : public ILoadFromDict<LoadFromDict<T>> {
         static constexpr bool not_supported_flag = true; //如果某个类型匹配到了这个偏特化，则说明该类型是不被支持的
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+        static void load_impl(T &value, const slow_json::dict &dict) {
             assert_with_message(SLOW_JSON_SUPPORTED,
                                 "无法将JSON字段转化为类型为'%s'的对象正确对象，找不到对应的LoadFromDict偏特化类",
                                 slow_json::type_name_v<T>.with_end().str);

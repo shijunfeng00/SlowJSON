@@ -170,11 +170,6 @@ namespace slow_json::details {
          * @param i 64位整数值
          * @return bool 始终返回true
          */
-        /**
-         * @brief 处理64位有符号整数值
-         * @param i 64位整数值
-         * @return bool 始终返回true
-         */
         bool Int64(int64_t i) {
             serializable_wrapper wrapper{i};
             wrapper.set_base_type(serializable_wrapper::INT64_TYPE);
@@ -247,6 +242,7 @@ namespace slow_json::details {
          * @details 根据当前栈状态，将值插入到对象（使用键创建pair）或数组（忽略键），支持根对象为基本类型或数组。
          */
         void InsertValue(std::string key, serializable_wrapper&& value) {
+
             // ① 对象优先
             if (!object_stack_.empty() && !key.empty()) {
                 dict* current = object_stack_.top();
@@ -265,7 +261,10 @@ namespace slow_json::details {
 
             // ③ 根基本类型
             if (!root_) {
+                auto base_type=value.get_base_type();
                 root_ = new dict{std::move(value)};
+                root_->set_base_type(base_type);
+                root_->set_heap_allocated(true);
                 return;
             }
 
@@ -310,12 +309,14 @@ namespace slow_json::details {
                                         " 在偏移量 " + std::to_string(result.Offset());
                 throw std::runtime_error(error_msg);
             }
-
+            while (ss.Peek() == ' ' || ss.Peek() == '\n' || ss.Peek() == '\t' || ss.Peek() == '\r') {
+                ss.Take();
+            }
             if (ss.Tell() != json_str.size()) {
                 throw std::runtime_error("JSON解析不完整，存在未解析的字符");
             }
-
-            return handler.GetRoot();
+            dict dict=handler.GetRoot();
+            return dict;
         }
 
     private:
@@ -325,6 +326,9 @@ namespace slow_json::details {
         std::stack<std::string> value_key_stack_; ///< 值键栈，管理嵌套对象的键以防覆盖
         std::string current_key_; ///< 当前解析的键
     };
+    static slow_json::dict parse_json_to_dict(std::string_view json_str){
+        return DictHandler::parse_json_to_dict(json_str);
+    }
 
 } // namespace slow_json::details
 

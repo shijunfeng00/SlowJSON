@@ -10,6 +10,7 @@
 #include "dict.hpp"
 #include "enum.hpp"
 #include "serializable.hpp"
+#include "internal/dtoa.h"
 #include <cmath>
 
 namespace slow_json {

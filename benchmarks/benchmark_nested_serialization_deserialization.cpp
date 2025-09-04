@@ -131,38 +131,44 @@ namespace nested_serialization_deserialization {
         obj.nodes.emplace_back(NestedDrivedNode{{2, 85.0f, "Node2", {40, 50}}, {29.99, 39.99, 49.99}, "Accessories", std::nullopt});
         obj.metrics = {{"accuracy", 0.95f}, {"latency", 12.5f}};
         obj.meta = {2024, "Production"};
+
+        // warmup：先生成 JSON 字符串作为反序列化输入
         slow_json::dumps(buffer, obj);
         auto result = buffer.string();
         buffer.clear();
-        // 序列化测试：仅测试 dumps
+
+        // === 序列化全流程（对象->JSON字符串）===
         auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
-            slow_json::dumps(buffer, obj);
             buffer.clear();
+            slow_json::dumps(buffer, obj);
+            auto str = buffer.string(); // 计入 string 化
         }
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "SlowJSON 序列化: "
+        std::cout << "SlowJSON 序列化 (对象->JSON字符串): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
-        // 反序列化测试：仅测试 loads
+
+        // === 反序列化全流程（JSON字符串->对象）===
         start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
             NestedObject temp;
-            slow_json::loads(temp, result);
+            slow_json::loads(temp, result); // parse + dict -> 对象
         }
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "SlowJSON 反序列化: "
+        std::cout << "SlowJSON 反序列化 (JSON字符串->对象): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+
         return result;
     }
-
-    // RapidJSON 测试
+// RapidJSON 测试
     inline std::string bench_rapidjson() {
         rapidjson::Document doc;
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
         auto& allocator = doc.GetAllocator();
+
         // 准备测试数据
         NestedObject obj;
         obj.timestamp = 1722016800;
@@ -170,37 +176,42 @@ namespace nested_serialization_deserialization {
         obj.nodes.emplace_back(NestedDrivedNode{{2, 85.0f, "Node2", {40, 50}}, {29.99, 39.99, 49.99}, "Accessories", std::nullopt});
         obj.metrics = {{"accuracy", 0.95f}, {"latency", 12.5f}};
         obj.meta = {2024, "Production"};
+
+        // warmup：先生成 JSON 字符串作为反序列化输入
         rapidjson_helpers::serialize(obj, doc, allocator);
         doc.Accept(writer);
         auto result = std::string(buffer.GetString());
         buffer.Clear();
         writer.Reset(buffer);
         doc.SetObject();
-        // 序列化测试：仅测试 serialize 和 Accept
+
+        // === 序列化全流程（对象->JSON字符串）===
         auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
+            doc.SetObject();
             rapidjson_helpers::serialize(obj, doc, allocator);
-            doc.Accept(writer);
             buffer.Clear();
             writer.Reset(buffer);
-            doc.SetObject();
+            doc.Accept(writer);
+            auto str = std::string(buffer.GetString()); // 计入 string 化
         }
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "RapidJSON 序列化: "
+        std::cout << "RapidJSON 序列化 (对象->JSON字符串): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
-        // 反序列化测试：仅测试 Parse 和 deserialize
+
+        // === 反序列化全流程（JSON字符串->对象）===
         start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
             NestedObject temp;
-            doc.Parse(result.c_str());
-            rapidjson_helpers::deserialize(temp, doc);
-            doc.SetObject();
+            doc.Parse(result.c_str());               // parse
+            rapidjson_helpers::deserialize(temp, doc); // 对象化
         }
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "RapidJSON 反序列化: "
+        std::cout << "RapidJSON 反序列化 (JSON字符串->对象): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+
         return result;
     }
 }

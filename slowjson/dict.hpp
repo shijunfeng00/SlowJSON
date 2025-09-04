@@ -72,13 +72,22 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
-#include "load_from_dict_interface.hpp"
 #include "key_to_index.hpp"
 #include "wrapper.hpp"
+#include "concepts.hpp"
+#include "buffer.hpp"
+
+namespace slow_json{
+    template<typename T>
+    struct DumpToString;
+    namespace details{
+        struct dict;
+        struct serializable_wrapper;
+        static dict parse_json_to_dict(std::string_view json_str);
+    }
+}
 
 namespace slow_json::details {
-    struct dict;
-    struct serializable_wrapper;
 
     /**
       * @brief 动态字典结构，用于存储键值对或包装值
@@ -109,6 +118,9 @@ namespace slow_json::details {
         static constexpr uintptr_t HEAP_ALLOCATED_MASK = 0x8; ///< 第 4 位 - 堆分配标志 (0b1000)
         static constexpr uintptr_t CLEAR_MASK = ~0xF;      ///< 清除低 4 位的掩码
 
+        static dict from_string(std::string_view json_str){
+            return parse_json_to_dict(json_str);
+        }
         /**
          * @brief 构造函数，使用初始化列表构造根字典
          * @param data 初始化列表，包含键值对
@@ -153,11 +165,11 @@ namespace slow_json::details {
          */
         dict(dict &&other) noexcept:
                 _key_to_index(nullptr) {
-            auto other_type = other.value_type();
-            set_value_type(other_type);
+            auto value_type = other.value_type();
             set_copied(other.get_copied());
             set_heap_allocated(other.is_heap_allocated());
-            if (other_type == serializable_wrapper::ROOT_DICT_TYPE) {
+            set_value_type(value_type);
+            if (value_type == serializable_wrapper::ROOT_DICT_TYPE) {
                 new(&_data) std::vector<pair>(std::move(other._data));
                 set_key_to_index(other.get_key_to_index());
                 other.set_key_to_index(nullptr);
@@ -253,7 +265,7 @@ namespace slow_json::details {
          * @return dict& 当前对象的引用
          * @details 清理当前资源，移动字典数据，更新类型
          */
-        dict &operator=(dict &&other) SLOW_JSON_NOEXCEPT {
+        dict &operator=(dict&&other) SLOW_JSON_NOEXCEPT {
             if (this != &other) {
                 if (value_type() == serializable_wrapper::ROOT_DICT_TYPE) {
                     // 自己是根字典，情况复杂
@@ -284,7 +296,8 @@ namespace slow_json::details {
                         set_key_to_index(nullptr);
                         set_copied(false);
                         set_value_type(other.value_type());
-                        _data_ptr = new serializable_wrapper(std::move(other));
+                        _data_ptr = new serializable_wrapper(std::move(*other._data_ptr));
+                        other._data_ptr=nullptr;
                         set_heap_allocated(true);
                     }
                 } else {
@@ -300,8 +313,18 @@ namespace slow_json::details {
                     } else {
                         set_copied(false); // 接管所有权，避免 double free
                     }
-                    *_data_ptr = serializable_wrapper(std::move(other));
-                    set_heap_allocated(is_heap_allocated() || other.is_heap_allocated());
+                    // 但对方是跟字典，对方使用_data
+                    if(other.value_type()==serializable_wrapper::ROOT_DICT_TYPE){
+                        printf("\n\ntest1\n\n");
+                        *_data_ptr = serializable_wrapper(std::move(other));
+                        printf("\n\ntest3\n\n");
+                       set_heap_allocated(false);
+                    }else{
+                        *_data_ptr = std::move(*other._data_ptr);
+                        other._data_ptr=nullptr;
+                        other.set_heap_allocated(false);//因为没有new指针出来，所以无需释放
+                    }
+
                 }
             }
             return *this;
@@ -333,6 +356,9 @@ namespace slow_json::details {
          * @details 和 JSON 的空对应，明确的数据为空 (null) 返回 true
          */
         bool is_null() const SLOW_JSON_NOEXCEPT {
+            if(get_base_type()==serializable_wrapper::NULL_TYPE){
+                return true;
+            }
             if (value_type() == serializable_wrapper::FUNDAMENTAL_TYPE) {
                 auto &data = *(serializable_wrapper *) _data_ptr;
                 slow_json::Buffer buffer;
@@ -365,27 +391,10 @@ namespace slow_json::details {
             return dict{nullptr};
         }
 
-        /**
-         * @brief 访问字典元素
-         * @param key 键
-         * @return dict 对应的子字典或包装值
-         * @throws 当键不存在或类型不正确时抛出异常
-         */
         template<typename T, typename = std::enable_if_t<
                 (std::is_same_v<T, std::nullptr_t> || std::is_pointer_v<T>) && !std::is_integral_v<T>>>
         dict operator[](T key) const SLOW_JSON_NOEXCEPT {
-            auto value_fn = [](const pair &p) { return &reinterpret_cast<const _pair *>(&p)->_value; };
-            assert_with_message(key != nullptr, "key 为空指针");
-            auto type = value_type();
-            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
-                initialize_key_to_index();
-                assert_with_message(get_key_to_index()->contains(key), "字典中不存在该字段:'%s'", (char *) key);
-                return dict{value_fn(_data[get_key_to_index()->at(key)])};
-            } else if (type == serializable_wrapper::DICT_TYPE) {
-                return static_cast<dict *>(_data_ptr->value())->operator[](key);
-            }
-            assert_with_message(false, "非字典类型，无法通过键访问数据");
-            return dict{nullptr};
+            return const_cast<dict*>(this)->operator[](key);
         }
 
         /**
@@ -394,11 +403,14 @@ namespace slow_json::details {
          * @return dict 对应的子字典或包装值
          * @throws 当索引越界或类型不正确时抛出异常
          */
-        dict operator[](std::size_t index) const SLOW_JSON_NOEXCEPT {
+        dict operator[](std::size_t index) SLOW_JSON_NOEXCEPT {
             assert_with_message(value_type() == serializable_wrapper::LIST_TYPE, "非列表类型，无法通过整数下标访问数据");
             auto &list_data = *static_cast<std::vector<serializable_wrapper> *>(_data_ptr->value());
             assert_with_message(index < list_data.size(), "数组越界访问:%zu >= %zu", index, list_data.size());
-            return dict{const_cast<serializable_wrapper *>(&list_data[index])};
+            return dict{&list_data[index]};
+        }
+        dict operator[](std::size_t index) const SLOW_JSON_NOEXCEPT {
+            return const_cast<dict*>(this)->operator[](index);
         }
 
         /**
@@ -449,10 +461,23 @@ namespace slow_json::details {
         template<typename T>
         T cast() const SLOW_JSON_NOEXCEPT {
             constexpr auto type_name = std::string_view{type_name_v<T>.str};
+            if constexpr(!(std::is_fundamental_v<T> || concepts::contains<T, std::string, std::string_view, const char *>)){
+                if(type_name == _data_ptr->type_name().data()){
+                    return *static_cast<T*>(_data_ptr->value());
+                }else{
+                    T value;
+                    LoadFromDict<T>::load(value,*this);
+                    return value;
+                }
+            }
+
             if (this->get_base_type() == serializable_wrapper::NOT_FUNDAMENTAL_TYPE) {
-                assert_with_message(value_type() == serializable_wrapper::FUNDAMENTAL_TYPE, "非基础类型，无法转换");
-                assert_with_message(type_name == _data_ptr->type_name(), "类型不正确，预期为`%s`，实际为`%s`",
-                                    _data_ptr->type_name().data(), type_name.data());
+                if(value_type() == serializable_wrapper::FUNDAMENTAL_TYPE){
+                    assert_with_message(type_name == _data_ptr->type_name().data(), "类型不正确，预期为`%s`，实际为`%s`",
+                                        _data_ptr->type_name().data(), type_name.data());
+                }else {
+                    assert_with_message(value_type() == serializable_wrapper::FUNDAMENTAL_TYPE, "非基础类型，无法转换");
+                }
                 return *static_cast<T *>(_data_ptr->value());
             } else {
                 if constexpr (std::is_fundamental_v<T> ||
@@ -546,6 +571,26 @@ namespace slow_json::details {
             return this->cast<T>();
         }
 
+         /**
+         * @brief 使用 JSON 的值填充给定对象的数据
+         * @tparam T 数据类型
+         * @param value 被填充的对象
+         */
+        template<typename T>
+        void fit(T &value) const {
+            if constexpr (!concepts::optional<T>) {
+                assert_with_message(!this->is_null(),
+                                    "尝试解析null空对象为非空对象，value类型必须为std::optional<T>");
+                LoadFromDict<T>::load(value, *this);
+            } else {
+                if (this->is_null()) {
+                    value = std::nullopt;
+                } else {
+                    LoadFromDict<T>::load(value, *this);
+                }
+            }
+        }
+
         /**
          * @brief 检查是否为基本类型
          * @return bool 是否为基本类型
@@ -609,7 +654,7 @@ namespace slow_json::details {
          * @return std::unordered_map<const char*, dict> 键值对映射
          * @throws 当类型不正确时抛出异常
          */
-        std::unordered_map<const char *, dict> as_dict() {
+        std::unordered_map<const char *, dict> as_dict()SLOW_JSON_NOEXCEPT{
             auto value_fn = [](pair &p) { return &reinterpret_cast<_pair *>(&p)->_value; };
             assert_with_message(is_dict(), "非字典类型，无法转换为 std::unordered_map");
             std::unordered_map<const char *, dict> result;
@@ -620,6 +665,30 @@ namespace slow_json::details {
                 }
             } else {
                 auto &d = *static_cast<dict *>(_data_ptr->value());
+                return d.as_dict();
+            }
+            return result;
+        }
+
+        /**
+         * @brief 转换为 STL 无序映射
+         * @return std::unordered_map<const char*, dict> 键值对映射
+         * @throws 当类型不正确时抛出异常
+         */
+        std::unordered_map<const char *, const dict> as_dict()const SLOW_JSON_NOEXCEPT{
+            auto value_fn = [](pair &p) {
+                return &reinterpret_cast<_pair *>(&p)->_value;
+            };
+            assert_with_message(is_dict(), "非字典类型，无法转换为 std::unordered_map");
+            std::unordered_map<const char *, const dict> result;
+            auto type = value_type();
+            if (type == serializable_wrapper::ROOT_DICT_TYPE) {
+                for (auto &p: _data) {
+                    auto value=value_fn(*const_cast<pair*>(&p));
+                    result.emplace(_pair_key_fn(p), dict{const_cast<serializable_wrapper*>(value)});
+                }
+            } else {
+                const auto &d = *static_cast<const dict *>(_data_ptr->value());
                 return d.as_dict();
             }
             return result;
@@ -700,7 +769,7 @@ namespace slow_json::details {
             return _data_ptr->get_base_type();
         }
 
-    //protected:
+    protected:
         /**
          * @brief 内部构造函数，用于构造子节点
          * @param data 序列化包装器指针
@@ -729,6 +798,9 @@ namespace slow_json::details {
             set_heap_allocated(true);
             _data_ptr = new serializable_wrapper{std::move(data)};
         }
+
+
+
 
         /**
          * @brief 设置基础类型信息
@@ -847,6 +919,24 @@ namespace slow_json::details {
             auto old_metadata = reinterpret_cast<uintptr_t>(_key_to_index) & ~CLEAR_MASK;
             auto new_ptr = reinterpret_cast<uintptr_t>(ptr);
             _key_to_index = reinterpret_cast<key_to_index *>(new_ptr | old_metadata);
+        }
+
+        /**
+         * @brief 将当前对象转换为指定类型 T
+         * @tparam T 目标类型
+         * @return T 转换后的值（对于基本类型可能是隐式转换后的值）
+         * @note 作为load_from_dict中的一个内部优化手段，必须严格进行类型匹配
+         * @tparam T
+         * @return
+         */
+        template<typename T>
+        T&cast_cref()const SLOW_JSON_NOEXCEPT{
+            assert_with_message(this->value_type()==serializable_wrapper::FUNDAMENTAL_TYPE,"非基础类型无法转换");
+            assert_with_message(type_name_v<T>.str==_data_ptr->type_name().data(),
+                                "类型不正确，预期为`%s`，实际为`%s`",
+                                _data_ptr->type_name().data(),
+                                type_name_v<T>.str);
+            return static_cast<T*>(_data_ptr->value());
         }
 
         mutable key_to_index *_key_to_index; ///< 键到索引映射，延迟初始化，低 4 位存储值类型、复制标志和堆分配标志

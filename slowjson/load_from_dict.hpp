@@ -14,78 +14,38 @@
 namespace slow_json {
     template<concepts::fundamental T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const dynamic_dict &dict) {
-            const rapidjson::Value *v = dict.value();
-            // 布尔类型
-            if constexpr (std::is_same_v<T, bool>) {
-                assert_with_message(v->IsBool(), "期望 JSON 为布尔类型");
-                value = v->GetBool();
-            }
-                // 有符号整数类型（包括 char、short、int、long、long long）
-            else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>) {
-                assert_with_message(v->IsInt() || v->IsInt64(), "期望 JSON 为有符号整数类型");
-                int64_t tmp = v->IsInt() ? v->GetInt() : v->GetInt64();
-                assert_with_message(tmp >= static_cast<int64_t>(std::numeric_limits<T>::lowest()) &&
-                                    tmp <= static_cast<int64_t>(std::numeric_limits<T>::max()),
-                                    "有符号整数溢出，超出类型范围");
-                value = static_cast<T>(tmp);
-            }
-                // 无符号整数类型（包括 unsigned char、unsigned short、unsigned int、unsigned long、unsigned long long）
-            else if constexpr (std::is_integral_v<T> && std::is_unsigned_v<T>) {
-                assert_with_message(v->IsUint() || v->IsUint64(), "期望 JSON 为无符号整数类型");
-                uint64_t tmp = v->IsUint() ? v->GetUint() : v->GetUint64();
-                assert_with_message(tmp <= static_cast<uint64_t>(std::numeric_limits<T>::max()),
-                                    "无符号整数溢出，超出类型范围");
-                value = static_cast<T>(tmp);
-            }
-                // 浮点数类型（包括 float、double、long double）
-            else if constexpr (std::is_floating_point_v<T>) {
-                assert_with_message(v->IsDouble() || v->IsNumber(), "期望 JSON 为浮点数类型");
-                value = static_cast<T>(v->GetDouble());
-            }
-                // std::string
-            else if constexpr (std::is_same_v<T, std::string>) {
-                assert_with_message(v->IsString(), "期望 JSON 为字符串类型以解析为 std::string");
-                value.assign(v->GetString(), v->GetStringLength());
-            }
-                // std::string_view
-            else if constexpr (std::is_same_v<T, std::string_view>) {
-                assert_with_message(v->IsString(), "期望 JSON 为字符串类型以解析为 std::string_view");
-                value = std::string_view(v->GetString(), v->GetStringLength());
-            }
-                // 其他类型（如对象或数组）需自定义特化或加载器
-            else {
-                static_assert(!sizeof(T), "未为该类型提供 LoadFromDict 特化或实现");
-            }
+        static void load_impl(T &value, const dict &dict) {
+            assert_with_message(!dict.is_null(), "试图将空对象解析为%s", type_name_v<T>.str);
+            //dict.cast本身已经提供了fundamental_type+string/string_view/const char*的支持，因此这里可以直接调用
+            value = dict.cast<T>();
         }
     };
 
     template<concepts::string T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(!dict.value()->IsNull(), "试图将空对象解析为%s", type_name_v<T>.str);
-            if constexpr(concepts::array<T> && std::is_same_v<std::decay_t<T>,char *>){
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(!dict.is_null(), "试图将空对象解析为%s", type_name_v<T>.str);
+            if constexpr(concepts::array<T> && std::is_same_v<std::decay_t<T>,char *>){ //char[N]类型
                 //char value[N]类型，已经分配好空间了，直接往value拷贝就行
-                const char *data = dict.value()->GetString();
-                std::size_t size = dict.value()->GetStringLength();
-                memcpy(value, data, size + 1);
+                const auto&data=dict.cast_cref<std::string>();
+                memcpy(value, data.c_str(), data.size() + 1);
             } else if constexpr (std::is_same_v<T, const char *>) {
-                const char *data = dict.value()->GetString();
-                 std::size_t size = dict.value()->GetStringLength();
-                char *data_cp = new char[size + 1];
-                memcpy(data_cp, data, size + 1);
+                const auto&data=dict.cast_cref<std::string>();
+                // 反序列化中，假设对象本身指针是无效/空的，因此要在这里进行分配工作
+                char *data_cp = new char[data.size() + 1];
+                memcpy(data_cp, data.c_str(), data.size() + 1);
                 value = data_cp;
             } else {
-                value = dict.value()->GetString();
+                // std::string,std::string_view
+                value = dict.cast<T>();
             }
         }
     };
 
     template<concepts::pointer T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            //std::cout<<"caonima1"<<std::endl;
-            if(dict._value->IsNull()){
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            if(dict.is_null()){
                 value=nullptr;
                 return;
             }
@@ -96,6 +56,7 @@ namespace slow_json {
                 }
                 LoadFromDict<base_type>::load(*value, dict);
             }else{
+                //智能指针,shared_ptr,unique_ptr
                 using element_type=T::element_type;
                 if(value==nullptr) {
                     value = T(new element_type());
@@ -107,8 +68,8 @@ namespace slow_json {
 
     template<concepts::iterable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_list(), "数据不能转化为list");
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(dict.is_array(), "数据不能转化为list");
             using element_type = std::remove_const_t<std::remove_reference_t<decltype(*std::begin(value))>>;
             if constexpr (concepts::array<T>) {
                 auto array_size = std::size(value);
@@ -137,13 +98,13 @@ namespace slow_json {
 
     template<concepts::dict T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+        static void load_impl(T &value, const slow_json::dict &dict) {
             assert_with_message(dict.is_dict(), "数据不能转化为dict");
             value.clear();
             for (const auto &[k, v]: dict.as_dict()) {
                 using key_type = typename T::key_type;
                 using value_type = typename T::mapped_type;
-                key_type key=k.data(); //对于字典，key总是可以变为字符串的才对
+                key_type key=k; //对于字典，key总是可以变为字符串的才对
                 value_type val;
                 LoadFromDict<value_type>::load(val, v);
                 value.emplace(std::move(key), std::move(val));
@@ -153,7 +114,7 @@ namespace slow_json {
 
     template<concepts::serializable T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
+        static void load_impl(T &value, const slow_json::dict &dict) {
             if constexpr(std::is_same_v<decltype(T::get_config()),slow_json::dict>){
                 slow_json::dict config=T::get_config();
                 for(const auto&it:config._data){
@@ -187,8 +148,8 @@ namespace slow_json {
 
     template<concepts::cv_point T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_list(), "数据不能转化为二维点，数据非列表类型");
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(dict.is_array(), "数据不能转化为二维点，数据非列表类型");
             assert_with_message(dict.size() == 2, "数据不能转化为二维点，数据长度不为2（长度为%d）", dict.size());
             LoadFromDict<decltype(value.x)>::load(value.x, dict[0]);
             LoadFromDict<decltype(value.y)>::load(value.y, dict[1]);
@@ -197,8 +158,8 @@ namespace slow_json {
 
     template<concepts::tuple T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_list(), "数据不能转化为list");
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(dict.is_array(), "数据不能转化为list");
             assert_with_message(dict.size() == std::tuple_size_v<T>,
                                 "list中元素数量和std::tuple<Args...>参数数量不对等");
             auto fn = [&]<typename U>(U &value, std::size_t index) {
@@ -213,8 +174,8 @@ namespace slow_json {
 
     template<concepts::pair T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_list() && dict.size() == 2, "数据不能转化为std::pair");
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为std::pair");
             LoadFromDict<decltype(value.first)>::load(value.first, dict[0]);
             LoadFromDict<decltype(value.second)>::load(value.second, dict[1]);
         }
@@ -222,8 +183,8 @@ namespace slow_json {
 
     template<concepts::eigen_point T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            assert_with_message(dict.is_list() && dict.size() == 2, "数据不能转化为二维点");
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            assert_with_message(dict.is_array() && dict.size() == 2, "数据不能转化为二维点");
             LoadFromDict<decltype(value.x())>::load(value.x(), dict[0]);
             LoadFromDict<decltype(value.y())>::load(value.x(), dict[1]);
         }
@@ -231,26 +192,26 @@ namespace slow_json {
 
     template<concepts::enumerate T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) {
-            const char *enum_str = dict._value->GetString();
+        static void load_impl(T &value, const slow_json::dict &dict) {
+            const char *enum_str = dict.cast<const char*>();
             value = details::string2enum<T>(enum_str);
         }
     };
 
     /**
-     * 根据get_config传入一个slow_json::dynamic_dict对象，提供成员属性指针和名称，据此来完成解析
+     * 根据get_config传入一个slow_json::dict对象，提供成员属性指针和名称，据此来完成解析
      * @tparam T
      */
     template<concepts::serializable_oop T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
+        static void load_impl(T &value, const slow_json::dict &dict) SLOW_JSON_NOEXCEPT {
             value.from_config(dict);
         }
     };
 
     template<concepts::optional T>
     struct LoadFromDict<T> : public ILoadFromDict<LoadFromDict<T>> {
-        static void load_impl(T &value, const slow_json::dynamic_dict &dict) SLOW_JSON_NOEXCEPT {
+        static void load_impl(T &value, const slow_json::dict &dict) SLOW_JSON_NOEXCEPT {
             typename T::value_type object;
             if (!dict.is_null()) {
                 LoadFromDict<typename T::value_type>::load(object, dict);

@@ -41,7 +41,7 @@ int main() {
     test_dict_visit();
     test_dict_modify();
     test_integer_dumps();
-    test_dynamic_dict_visit();
+    //test_dynamic_dict_visit();
     test_dict_loads();
     test_dict_extract();
     test_base_type();

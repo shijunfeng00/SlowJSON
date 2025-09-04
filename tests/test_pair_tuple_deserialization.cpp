@@ -36,7 +36,7 @@ void test_pair_tuple_deserialization() {
         "z":"STR",
         "tp":[1,2.3,"test"]
     }])";
-    slow_json::dynamic_dict dict(json_str);
+    slow_json::dict dict=slow_json::dict::from_string(json_str);
     auto pr = dict[0]["x"].cast<std::pair<int, float>>();
     assert_with_message(pr.first == 4, "JSON反序列化结果错误");
     assert_with_message(pr.second == 5.4f, "JSON反序列化结果错误");

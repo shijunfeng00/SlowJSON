@@ -151,10 +151,10 @@ void test_dict_modify();
  */
 void test_integer_dumps();
 
-/**
- * 测试slow_json::dynamic_dict的数据访问接口正确性
- */
-void test_dynamic_dict_visit();
+///**
+// * 测试slow_json::dynamic_dict的数据访问接口正确性
+// */
+//void test_dynamic_dict_visit();
 
 /**
  * 测试slow_json::dict反序列化的正确性

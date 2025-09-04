@@ -17,7 +17,7 @@ struct Data : public slow_json::ISerializable {
         };
     }
 
-    void from_config(const slow_json::dynamic_dict &data) noexcept override {
+    void from_config(const slow_json::dict &data) noexcept override {
         x = data["x"].cast<int>();
         y = data["y"].cast<float>();
         z = data["z"].cast<std::string>();

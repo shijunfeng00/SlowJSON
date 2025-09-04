@@ -19,34 +19,42 @@ namespace simple_serialization_deserialization {
 
     // SlowJSON 测试
     inline std::string benchmark_slowjson() {
-        slow_json::Buffer buffer{1000};
         // 准备测试数据
-        SimpleUser user{"shijunfeng00", 19, {"zyy", "ly", "hah"}};
+        simple_serialization_deserialization::SimpleUser user{"shijunfeng00", 19, {"zyy", "ly", "hah"}};
+        slow_json::Buffer buffer{1000};
+
+        // warmup：先跑一次，拿到 result 作为后续 loads 输入
         slow_json::dumps(buffer, user);
         auto result = buffer.string();
         buffer.clear();
-        // 序列化测试：仅测试 dumps
+
+        // === 序列化全流程（对象 -> JSON字符串）===
         auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
-            slow_json::dumps(buffer, user);
             buffer.clear();
+            slow_json::dumps(buffer, user);
+            auto str = buffer.string();  // 计入 string 化
+            // 不清理 str，因为 string 本身析构在循环外，避免额外影响
         }
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "SlowJSON 序列化: "
+        std::cout << "SlowJSON 序列化 (对象->JSON字符串): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
-        // 反序列化测试：仅测试 loads
+
+        // === 反序列化全流程（JSON字符串 -> 对象）===
         start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
-            SimpleUser temp;
-            slow_json::loads(temp, result);
+            simple_serialization_deserialization::SimpleUser temp;
+            slow_json::loads(temp, result);  // 内部会 parse -> dict -> 对象
         }
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "SlowJSON 反序列化: "
+        std::cout << "SlowJSON 反序列化 (JSON字符串->对象): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+
         return result;
     }
+
 
     // RapidJSON 序列化
     inline void rapidjson_serialize(const SimpleUser &user, rapidjson::Document &doc, rapidjson::Document::AllocatorType &allocator) {
@@ -73,43 +81,50 @@ namespace simple_serialization_deserialization {
 
     // RapidJSON 测试
     inline std::string benchmark_rapidjson() {
+        using namespace simple_serialization_deserialization;
         rapidjson::Document doc;
+        auto& allocator = doc.GetAllocator();
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-        auto& allocator = doc.GetAllocator();
+
         // 准备测试数据
         SimpleUser user{"shijunfeng00", 19, {"zyy", "ly", "hah"}};
+
+        // warmup：先跑一次，拿到 result 作为后续 Parse 输入
         rapidjson_serialize(user, doc, allocator);
         doc.Accept(writer);
         auto result = std::string(buffer.GetString());
         buffer.Clear();
         writer.Reset(buffer);
         doc.SetObject();
-        // 序列化测试：仅测试 serialize 和 Accept
+
+        // === 序列化全流程（对象 -> JSON字符串）===
         auto start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
+            doc.SetObject();
             rapidjson_serialize(user, doc, allocator);
-            doc.Accept(writer);
             buffer.Clear();
             writer.Reset(buffer);
-            doc.SetObject();
+            doc.Accept(writer);
+            auto str = std::string(buffer.GetString()); // 计入 string 化
         }
         auto end = std::chrono::high_resolution_clock::now();
-        std::cout << "RapidJSON 序列化: "
+        std::cout << "RapidJSON 序列化 (对象->JSON字符串): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
-        // 反序列化测试：仅测试 Parse 和 deserialize
+
+        // === 反序列化全流程（JSON字符串 -> 对象）===
         start = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < ITERATIONS; ++i) {
             SimpleUser temp;
-            doc.Parse(result.c_str());
-            rapidjson_deserialize(temp, doc);
-            doc.SetObject();
+            doc.Parse(result.c_str());    // 计入 parse
+            rapidjson_deserialize(temp, doc);  // 计入对象化
         }
         end = std::chrono::high_resolution_clock::now();
-        std::cout << "RapidJSON 反序列化: "
+        std::cout << "RapidJSON 反序列化 (JSON字符串->对象): "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
                   << "ms\n";
+
         return result;
     }
 }

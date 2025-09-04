@@ -50,6 +50,7 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <string>
+#include <cstring>
 
 #ifdef BUILD_TEST_UNIT //测试模式下，把断言变为异常
 #define SLOW_JSON_NOEXCEPT

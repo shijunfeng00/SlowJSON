@@ -5,6 +5,7 @@
 #ifndef SLOWJSON_SLOWJSON_HPP
 #define SLOWJSON_SLOWJSON_HPP
 
+#include "dict.hpp"
 #include "load.hpp"
 #include "dump.hpp"
 #include "supported.hpp"
@@ -13,5 +14,5 @@
 #include "macro.hpp"
 #include "dynamic_dict.hpp"
 #include "static_dict.hpp"
-#include "dict.hpp"
+
 #endif //SLOWJSON_SLOWJSON_HPP

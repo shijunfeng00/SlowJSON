@@ -6,7 +6,6 @@
 #define SLOWJSON_LOAD_HPP
 
 #include "load_from_dict.hpp"
-#include "dynamic_dict.hpp"
 #include "dict_handler.hpp"
 
 namespace slow_json {
@@ -19,9 +18,9 @@ namespace slow_json {
     template<typename T>
     static void loads(T &value, const std::string &json) {
         if constexpr(std::is_same_v<T,slow_json::dict>){
-            value=details::DictHandler::parse_json_to_dict(json);
+            value=slow_json::dict::from_string(json);
         }else{
-            slow_json::dynamic_dict dict(json);
+            slow_json::dict dict=details::DictHandler::parse_json_to_dict(json);
             LoadFromDict<T>::load(value, dict);
         }
     }
@@ -33,7 +32,7 @@ namespace slow_json {
         }else{
             if constexpr(std::is_default_constructible_v<T>){
                 T value;
-                slow_json::dynamic_dict dict(json);
+                slow_json::dict dict=details::DictHandler::parse_json_to_dict(json);
                 LoadFromDict<T>::load(value, dict);
                 return value;
             }else{

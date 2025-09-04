@@ -36,6 +36,7 @@ void test_dict_modify() {
 
     // 测试修改嵌套字典
     dict["x"] = {{"new_xx", 123}, {"new_yy", "test"}};
+    slow_json::cout<<"dict:"<<dict<<std::endl;
     assert_with_message(dict["x"].contains("new_xx"), "x 应包含 new_xx 键");
     assert_with_message(dict["x"]["new_xx"].cast<int>() == 123, "x.new_xx 应为 123");
     assert_with_message(std::strcmp(dict["x"]["new_yy"].cast<const char*>(), "test") == 0, "x.new_yy 应为 test");

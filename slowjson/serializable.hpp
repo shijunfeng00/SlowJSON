@@ -6,7 +6,7 @@
 #define SLOWJSON_SERIALIZABLE_HPP
 
 #include "dict.hpp"
-#include "dynamic_dict.hpp"
+#include "dict.hpp"
 #include "dump_to_string_interface.hpp"
 #include "load_from_dict_interface.hpp"
 
@@ -27,7 +27,7 @@ namespace slow_json {
          * 从JSON中反序列化对象
          * @param json
          */
-        virtual void from_config(const slow_json::dynamic_dict &json) = 0;
+        virtual void from_config(const slow_json::dict &json) = 0;
 
         virtual ~ISerializable() = default;
     };

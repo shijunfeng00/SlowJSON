@@ -59,7 +59,7 @@ namespace slow_json {
 
     template<>
     struct LoadFromDict<CVMat> : public ILoadFromDict<LoadFromDict<CVMat>> {
-        static void load_impl(CVMat &value, const slow_json::dynamic_dict &dict) {
+        static void load_impl(CVMat &value, const slow_json::dict &dict) {
             value = CVMat(3, 3);
             for (int i = 0; i < dict.size(); i++) {
                 for (int j = 0; j < dict[i].size(); j++) {

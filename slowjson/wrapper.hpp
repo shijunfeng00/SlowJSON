@@ -4,9 +4,21 @@
 
 #ifndef SLOWJSON_WRAPPER_HPP
 #define SLOWJSON_WRAPPER_HPP
-#include "load_from_dict_interface.hpp"
+
+#include <functional>
+#include <cstddef>
 #include "key_to_index.hpp"
+#include "buffer.hpp"
+#include "type_name.hpp"
+
+namespace slow_json{
+    template<typename T>
+    struct DumpToString;
+    template<typename T>
+    struct LoadFromDict;
+}
 namespace slow_json::details {
+    struct dict;
     /**
      * @brief 字段包装器，用于处理类成员指针的序列化/反序列化
      * @details 通过捕获成员指针信息，实现运行时动态访问类成员
@@ -40,7 +52,7 @@ namespace slow_json::details {
         _load_fn([](
         const void *object_ptr, std::size_t
         offset,
-        const slow_json::dynamic_dict &dict
+        const dict &dict
         ) {
             auto &object = *(Class *) object_ptr;
             Field &field = std::ref(*(Field * )((std::uintptr_t) & object + offset));
@@ -64,7 +76,7 @@ namespace slow_json::details {
          * @param dict 输入字典
          * @throws 当_object_ptr为空时触发断言
          */
-        void load_fn(const slow_json::dynamic_dict &dict) const {
+        void load_fn(const dict &dict) const {
             assert_with_message(_object_ptr != nullptr, "对象指针为空");
             _load_fn(_object_ptr, _offset, dict);
         }
@@ -73,7 +85,7 @@ namespace slow_json::details {
         mutable const void *_object_ptr; ///< 绑定的对象指针
         std::size_t _offset; ///< 成员变量相对于对象地址的偏移量
         void (*_dump_fn)(slow_json::Buffer &, const void *, std::size_t); ///< 序列化函数指针
-        void (*_load_fn)(const void *, std::size_t, const slow_json::dynamic_dict &); ///< 反序列化函数指针
+        void (*_load_fn)(const void *, std::size_t, const dict &); ///< 反序列化函数指针
     };
 
     struct serializable_wrapper {
@@ -283,9 +295,7 @@ namespace slow_json::details {
          * @return BaseType 基础类型枚举值
          * @details 从 _type_name 指针的低6位（第4-6位）提取基础类型信息
          */
-        [[nodiscard]] BaseType get_base_type() const
-
-        SLOW_JSON_NOEXCEPT {
+        [[nodiscard]] BaseType get_base_type() const SLOW_JSON_NOEXCEPT {
             auto ptr = reinterpret_cast<uintptr_t>(_type_name);
             return static_cast<BaseType>((ptr & BASE_TYPE_MASK) >> 3);
         }

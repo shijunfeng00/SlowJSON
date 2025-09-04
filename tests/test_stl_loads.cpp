@@ -11,17 +11,18 @@ void test_stl_loads() {
     printf("run %s\n", __PRETTY_FUNCTION__);
 
     {
-        slow_json::dynamic_dict dict("\"null\"");
+        slow_json::dict dict;
+        slow_json::loads(dict,"\"null\"");
         auto result = dict.cast<std::optional<std::string>>();
         assert_with_message(result == "null", "通过slow_json::loads反序列结果不正确");
     }
     {
-        slow_json::dynamic_dict dict("null");
+        slow_json::dict dict=slow_json::details::DictHandler::parse_json_to_dict("null");
         auto result = dict.cast<std::optional<std::string>>();
         assert_with_message(result == std::nullopt, "通过slow_json::loads反序列结果不正确");
     }
     {
-        slow_json::dynamic_dict dict("[1,2,3,4,5,6,7]");
+        slow_json::dict dict=slow_json::details::DictHandler::parse_json_to_dict("[1,2,3,4,5,6,7]");
         int fuck[7];
         dict.fit(fuck);
         assert_with_message(std::size(fuck) == 7, "通过slow_json::loads反序列结果不正确");
@@ -34,7 +35,7 @@ void test_stl_loads() {
         assert_with_message(fuck[6] == 7, "通过slow_json::loads反序列结果不正确");
     }
     {
-        slow_json::dynamic_dict dict("[1,2,3,4,5,6,7]");
+        slow_json::dict dict=slow_json::dict::from_string("[1,2,3,4,5,6,7]");
         std::deque<int> fuck;
         dict.fit(fuck);
         assert_with_message(fuck.size() == 7, "通过slow_json::loads反序列结果不正确");
@@ -47,7 +48,7 @@ void test_stl_loads() {
         assert_with_message(fuck[6] == 7, "通过slow_json::loads反序列结果不正确");
     }
     {
-        slow_json::dynamic_dict dict("[1,2,3,4,5,6,7]");
+        slow_json::dict dict=slow_json::dict::from_string("[1,2,3,4,5,6,7]");
         std::unordered_set<int> fuck;
         dict.fit(fuck);
         assert_with_message(fuck.size() == 7, "通过slow_json::loads反序列结果不正确");
