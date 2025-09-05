@@ -297,6 +297,7 @@ namespace slow_json::details {
                         set_copied(false);
                         set_value_type(other.value_type());
                         _data_ptr = new serializable_wrapper(std::move(*other._data_ptr));
+                        delete other._data_ptr;
                         other._data_ptr=nullptr;
                         set_heap_allocated(true);
                     }
@@ -315,10 +316,7 @@ namespace slow_json::details {
                     }
                     // 但对方是跟字典，对方使用_data
                     if(other.value_type()==serializable_wrapper::ROOT_DICT_TYPE){
-                        printf("\n\ntest1\n\n");
                         *_data_ptr = serializable_wrapper(std::move(other));
-                        printf("\n\ntest3\n\n");
-                       set_heap_allocated(false);
                     }else{
                         *_data_ptr = std::move(*other._data_ptr);
                         other._data_ptr=nullptr;
