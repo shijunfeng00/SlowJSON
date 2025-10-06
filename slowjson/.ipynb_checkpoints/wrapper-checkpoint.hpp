@@ -131,7 +131,9 @@ namespace slow_json::details {
          */
         template<typename T>
         requires(!std::is_same_v < std::decay_t < T > , serializable_wrapper >)
-        constexpr serializable_wrapper(T &&value) SLOW_JSON_NOEXCEPT { // NOLINT
+        constexpr serializable_wrapper(T &&value)
+
+        SLOW_JSON_NOEXCEPT { // NOLINT
             using Raw = std::decay_t<T>;
             using U = std::conditional_t <std::is_member_pointer_v<Raw>, field_wrapper, Raw>;
             using V = std::conditional_t <std::is_member_pointer_v<Raw>, field_wrapper, T>;
